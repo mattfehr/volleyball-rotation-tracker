@@ -66,7 +66,6 @@ function App() {
     );
   };
 
-
   return (
     <div className="min-h-screen bg-green-700 flex p-6 gap-6">
       {/* Sidebar Menu (Left) */}
@@ -117,12 +116,12 @@ function App() {
       </div>
 
       {/* Court and Right Panel */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 justify-center w-full pr-6">
         {/* Court */}
         <Court players={players} setPlayers={setPlayers} />
 
         {/* Rotation Rule Tools */}
-        <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit mr-2">
+        <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit mr-4">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
