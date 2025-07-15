@@ -93,60 +93,61 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-green-700 flex p-6 gap-6">
-      {/* Sidebar */}
-      <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
-        <h2 className="text-xl font-bold">Players</h2>
-        <button
-          className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
-          onClick={addPlayer}
-        >
-          + Add Player
-        </button>
-        {players.map((player) => (
-          <div key={player.id} className="border p-2 rounded bg-white space-y-1">
-            <input
-              type="text"
-              className="w-full border p-1"
-              placeholder="Position"
-              value={player.label}
-              onChange={(e) => updatePlayer(player.id, 'label', e.target.value)}
-            />
-            <input
-              type="text"
-              className="w-full border p-1"
-              placeholder="Name"
-              value={player.name}
-              onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
-            />
-            <select
-              className="w-full border p-1"
-              value={player.zone ?? ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value));
-              }}
-            >
-              <option value="">Zone (1–6)</option>
-              {[1, 2, 3, 4, 5, 6].map((z) => (
-                <option key={z} value={z}>{z}</option>
-              ))}
-            </select>
-            <button
-              className="text-red-600 text-sm"
-              onClick={() => removePlayer(player.id)}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
+    <div className="min-h-screen bg-green-700 flex justify-center items-start p-6">
+      <div className="flex gap-6 w-full max-w-screen-xl px-6">
+        {/* Sidebar */}
+        <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
+          <h2 className="text-xl font-bold">Players</h2>
+          <button
+            className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
+            onClick={addPlayer}
+          >
+            + Add Player
+          </button>
+          {players.map((player) => (
+            <div key={player.id} className="border p-2 rounded bg-white space-y-1">
+              <input
+                type="text"
+                className="w-full border p-1"
+                placeholder="Position"
+                value={player.label}
+                onChange={(e) => updatePlayer(player.id, 'label', e.target.value)}
+              />
+              <input
+                type="text"
+                className="w-full border p-1"
+                placeholder="Name"
+                value={player.name}
+                onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
+              />
+              <select
+                className="w-full border p-1"
+                value={player.zone ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value));
+                }}
+              >
+                <option value="">Zone (1–6)</option>
+                {[1, 2, 3, 4, 5, 6].map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+              </select>
+              <button
+                className="text-red-600 text-sm"
+                onClick={() => removePlayer(player.id)}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
 
-      {/* Court and Rule Panel */}
-      <div className="flex gap-6 justify-center w-full pr-6">
+        {/* Court */}
         <Court players={players} setPlayers={setPlayers} violatingIds={violatingIds} />
 
-        <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit mr-4">
+        {/* Rotation Rule Tools */}
+        <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
