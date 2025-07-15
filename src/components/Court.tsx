@@ -53,7 +53,13 @@ export default function Court({ players, setPlayers }: Props) {
   };
 
   return (
-    <div className="w-[900px] h-[900px] bg-yellow-500 relative border-4 border-black mx-auto">
+    <div className="w-[900px] h-[900px] bg-orange-400 relative border-4 border-white mx-auto">
+      {/* Net line (top) */}
+      <div className="absolute top-0 left-0 w-full h-[4px] bg-white z-10" />
+
+      {/* 3-meter line (from top, 300px = 3m scaled to 900px) */}
+      <div className="absolute top-[300px] left-0 w-full h-[4px] bg-white z-10" />
+
       <DndContext onDragEnd={handleDragEnd}>
         {players.map((player) => (
           <DraggablePlayer key={player.id} player={player} />
