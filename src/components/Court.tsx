@@ -27,7 +27,7 @@ function DraggablePlayer({ player }: { player: Player }) {
       {...listeners}
       {...attributes}
       style={style}
-      className="absolute w-16 h-16 bg-blue-600 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md"
+      className="absolute w-24 h-24 bg-blue-600 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md"
     >
       <span className="text-sm font-bold">{player.label}</span>
       <small>{player.name}</small>
@@ -55,7 +55,7 @@ export default function Court({ players, setPlayers }: Props) {
   return (
     <div className="w-[900px] h-[900px] bg-orange-400 relative border-4 border-white mx-auto">
       {/* Net line (top) */}
-      <div className="absolute top-0 left-0 w-full h-[4px] bg-white z-10" />
+      <div className="absolute top-0 left-0 w-full h-[8px] bg-white z-10" />
 
       {/* 3-meter line (from top, 300px = 3m scaled to 900px) */}
       <div className="absolute top-[300px] left-0 w-full h-[4px] bg-white z-10" />

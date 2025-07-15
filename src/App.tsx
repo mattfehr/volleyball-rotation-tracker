@@ -27,12 +27,12 @@ function App() {
   };
 
   return (
-    <div className="p-6 flex gap-6">
+    <div className="min-h-screen bg-green-700 flex p-6 gap-6">
       {/* Sidebar Menu */}
-      <div className="w-72 space-y-4">
+      <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
         <h2 className="text-xl font-bold">Players</h2>
         <button
-          className="!bg-blue-200 hover:!bg-blue-700 text-black px-3 py-1 rounded w-full"
+          className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
           onClick={addPlayer}
         >
           + Add Player
