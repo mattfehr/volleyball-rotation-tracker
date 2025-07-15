@@ -10,6 +10,7 @@ function App() {
 
   const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [violatingIds, setViolatingIds] = useState<string[]>([]);
 
   const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
     setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -33,6 +34,7 @@ function App() {
   const checkLegality = () => {
     if (players.length !== 6) {
       setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
+      setViolatingIds([]);
       return;
     }
 
@@ -40,6 +42,7 @@ function App() {
     const requiredZones = [1, 2, 3, 4, 5, 6];
     if (!requiredZones.every(z => zoneMap.has(z))) {
       setCheckResult("❌ All zones 1–6 must be assigned.");
+      setViolatingIds([]);
       return;
     }
 
@@ -47,18 +50,41 @@ function App() {
     const name = (n: number) => `${z(n).name || "Unnamed"}`;
 
     const violations: string[] = [];
+    const violators = new Set<string>();
 
-    // Vertical legality (back vs. front)
-    if (z(1).y < z(2).y) violations.push(`${name(1)} must be behind ${name(2)}`);
-    if (z(6).y < z(3).y) violations.push(`${name(6)} must be behind ${name(3)}`);
-    if (z(5).y < z(4).y) violations.push(`${name(5)} must be behind ${name(4)}`);
+    // Vertical legality
+    if (z(1).y < z(2).y) {
+      violations.push(`${name(1)} must be behind ${name(2)}`);
+      violators.add(z(1).id).add(z(2).id);
+    }
+    if (z(6).y < z(3).y) {
+      violations.push(`${name(6)} must be behind ${name(3)}`);
+      violators.add(z(6).id).add(z(3).id);
+    }
+    if (z(5).y < z(4).y) {
+      violations.push(`${name(5)} must be behind ${name(4)}`);
+      violators.add(z(5).id).add(z(4).id);
+    }
 
-    // Horizontal legality (left-right)
-    if (z(2).x < z(3).x) violations.push(`${name(2)} must be to the right of ${name(3)}`);
-    if (z(3).x < z(4).x) violations.push(`${name(3)} must be to the right of ${name(4)}`);
-    if (z(1).x < z(6).x) violations.push(`${name(1)} must be to the right of ${name(6)}`);
-    if (z(6).x < z(5).x) violations.push(`${name(6)} must be to the right of ${name(5)}`);
+    // Horizontal legality
+    if (z(2).x < z(3).x) {
+      violations.push(`${name(2)} must be to the right of ${name(3)}`);
+      violators.add(z(2).id).add(z(3).id);
+    }
+    if (z(3).x < z(4).x) {
+      violations.push(`${name(3)} must be to the right of ${name(4)}`);
+      violators.add(z(3).id).add(z(4).id);
+    }
+    if (z(1).x < z(6).x) {
+      violations.push(`${name(1)} must be to the right of ${name(6)}`);
+      violators.add(z(1).id).add(z(6).id);
+    }
+    if (z(6).x < z(5).x) {
+      violations.push(`${name(6)} must be to the right of ${name(5)}`);
+      violators.add(z(6).id).add(z(5).id);
+    }
 
+    setViolatingIds(Array.from(violators));
     setCheckResult(
       violations.length === 0
         ? "✅ Rotation is legal!"
@@ -68,7 +94,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-green-700 flex p-6 gap-6">
-      {/* Sidebar Menu (Left) */}
+      {/* Sidebar */}
       <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
         <h2 className="text-xl font-bold">Players</h2>
         <button
@@ -93,18 +119,19 @@ function App() {
               value={player.name}
               onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
             />
-            <input
-              type="number"
-              min={1}
-              max={6}
+            <select
               className="w-full border p-1"
-              placeholder="Zone (1–6)"
               value={player.zone ?? ''}
               onChange={(e) => {
-                const zoneValue = parseInt(e.target.value);
-                updatePlayer(player.id, 'zone', isNaN(zoneValue) ? undefined : zoneValue);
+                const value = e.target.value;
+                updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value));
               }}
-            />
+            >
+              <option value="">Zone (1–6)</option>
+              {[1, 2, 3, 4, 5, 6].map((z) => (
+                <option key={z} value={z}>{z}</option>
+              ))}
+            </select>
             <button
               className="text-red-600 text-sm"
               onClick={() => removePlayer(player.id)}
@@ -115,12 +142,10 @@ function App() {
         ))}
       </div>
 
-      {/* Court and Right Panel */}
+      {/* Court and Rule Panel */}
       <div className="flex gap-6 justify-center w-full pr-6">
-        {/* Court */}
-        <Court players={players} setPlayers={setPlayers} />
+        <Court players={players} setPlayers={setPlayers} violatingIds={violatingIds} />
 
-        {/* Rotation Rule Tools */}
         <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit mr-4">
           <label className="flex items-center gap-2">
             <input

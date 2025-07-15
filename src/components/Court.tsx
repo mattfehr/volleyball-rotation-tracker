@@ -8,9 +8,16 @@ import type { Player } from '../models/Player';
 type Props = {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
+  violatingIds?: string[];
 };
 
-function DraggablePlayer({ player }: { player: Player }) {
+function DraggablePlayer({
+  player,
+  isViolating,
+}: {
+  player: Player;
+  isViolating: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
   });
@@ -27,7 +34,8 @@ function DraggablePlayer({ player }: { player: Player }) {
       {...listeners}
       {...attributes}
       style={style}
-      className="absolute w-24 h-24 bg-blue-600 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md"
+      className={`absolute w-24 h-24 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md
+        ${isViolating ? 'bg-red-600 border-4 border-white animate-pulse' : 'bg-blue-600'}`}
     >
       <span className="text-sm font-bold">{player.label}</span>
       <small>{player.name}</small>
@@ -35,7 +43,7 @@ function DraggablePlayer({ player }: { player: Player }) {
   );
 }
 
-export default function Court({ players, setPlayers }: Props) {
+export default function Court({ players, setPlayers, violatingIds }: Props) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { delta, active } = event;
 
@@ -54,15 +62,17 @@ export default function Court({ players, setPlayers }: Props) {
 
   return (
     <div className="w-[900px] h-[900px] bg-orange-400 relative border-4 border-white mx-auto">
-      {/* Net line (top) */}
+      {/* Net line */}
       <div className="absolute top-0 left-0 w-full h-[8px] bg-white z-10" />
-
-      {/* 3-meter line (from top, 300px = 3m scaled to 900px) */}
       <div className="absolute top-[300px] left-0 w-full h-[4px] bg-white z-10" />
 
       <DndContext onDragEnd={handleDragEnd}>
         {players.map((player) => (
-          <DraggablePlayer key={player.id} player={player} />
+          <DraggablePlayer
+            key={player.id}
+            player={player}
+            isViolating={!!violatingIds?.includes(player.id)}
+          />
         ))}
       </DndContext>
     </div>
