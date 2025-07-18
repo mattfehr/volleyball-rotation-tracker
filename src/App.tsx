@@ -56,7 +56,7 @@ function App() {
 
   const checkLegality = () => {
     if (players.length !== 6) {
-      setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
+      setCheckResult("\u274C Must have exactly 6 players assigned to zones 1–6.");
       setViolatingIds([]);
       return;
     }
@@ -64,7 +64,7 @@ function App() {
     const zoneMap = new Map(players.map(p => [p.zone, p]));
     const requiredZones = [1, 2, 3, 4, 5, 6];
     if (!requiredZones.every(z => zoneMap.has(z))) {
-      setCheckResult("❌ All zones 1–6 must be assigned.");
+      setCheckResult("\u274C All zones 1–6 must be assigned.");
       setViolatingIds([]);
       return;
     }
@@ -108,13 +108,47 @@ function App() {
     setViolatingIds(Array.from(violators));
     setCheckResult(
       violations.length === 0
-        ? "✅ Rotation is legal!"
-        : "❌ Illegal rotation:\n" + violations.join(";\n")
+        ? "\u2705 Rotation is legal!"
+        : "\u274C Illegal rotation:\n" + violations.join(";\n")
     );
   };
 
   return (
-    <div className="min-h-screen bg-green-700 flex justify-center items-start p-6">
+    <div className="min-h-screen bg-green-700 flex justify-center items-start p-6 flex-col">
+      {/* Rotation Navigation */}
+      <div className="flex justify-between items-center w-full max-w-screen-xl mb-4 px-6">
+        <button
+          className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
+          onClick={() => setCurrentRotation((prev) => Math.max(prev - 1, 0))}
+          disabled={currentRotation === 0}
+        >
+          ← Prev
+        </button>
+
+        <div className="flex gap-2">
+          {[...Array(6)].map((_, i) => (
+            <button
+              key={i}
+              className={`px-3 py-1 rounded font-medium transition ${
+                i === currentRotation ? 'bg-yellow-400 text-black' : 'bg-white text-black hover:bg-gray-100'
+              }`}
+              onClick={() => setCurrentRotation(i)}
+            >
+              R{i + 1}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
+          onClick={() => setCurrentRotation((prev) => Math.min(prev + 1, 5))}
+          disabled={currentRotation === 5}
+        >
+          Next →
+        </button>
+      </div>
+
+      {/* Main Content */}
       <div className="flex gap-6 w-full max-w-screen-xl px-6">
         {/* Sidebar */}
         <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
