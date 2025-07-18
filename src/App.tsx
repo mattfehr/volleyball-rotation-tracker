@@ -4,9 +4,29 @@ import Court from './components/Court';
 import { v4 as uuid } from 'uuid';
 
 function App() {
-  const [players, setPlayers] = useState<Player[]>([
-    { id: uuid(), label: 'S', name: 'Alex', x: 200, y: 200 },
-  ]);
+  const initialPlayers: Player[] = [
+    { id: uuid(), label: 'S', name: 'Alex', x: 200, y: 200, zone: 1 },
+  ];
+
+  const [rotations, setRotations] = useState<Player[][]>(
+    Array.from({ length: 6 }, (_, i) => (i === 0 ? initialPlayers : []))
+  );
+
+  const [currentRotation, setCurrentRotation] = useState(0);
+  const players = rotations[currentRotation];
+
+  const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
+    setRotations(prev => {
+      const updated = [...prev];
+      const current = prev[currentRotation];
+      const next =
+        typeof valueOrUpdater === 'function'
+          ? (valueOrUpdater as (prev: Player[]) => Player[])(current)
+          : valueOrUpdater;
+      updated[currentRotation] = next;
+      return updated;
+    });
+  };
 
   const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
@@ -17,14 +37,17 @@ function App() {
   };
 
   const addPlayer = () => {
-    setPlayers([...players, {
-      id: uuid(),
-      label: 'New',
-      name: '',
-      x: 100,
-      y: 100,
-      zone: undefined,
-    }]);
+    setPlayers([
+      ...players,
+      {
+        id: uuid(),
+        label: 'New',
+        name: '',
+        x: 100,
+        y: 100,
+        zone: undefined,
+      },
+    ]);
   };
 
   const removePlayer = (id: string) => {
@@ -52,7 +75,6 @@ function App() {
     const violations: string[] = [];
     const violators = new Set<string>();
 
-    // Vertical legality
     if (z(1).y < z(2).y) {
       violations.push(`${name(1)} must be behind ${name(2)}`);
       violators.add(z(1).id).add(z(2).id);
@@ -66,7 +88,6 @@ function App() {
       violators.add(z(5).id).add(z(4).id);
     }
 
-    // Horizontal legality
     if (z(2).x < z(3).x) {
       violations.push(`${name(2)} must be to the right of ${name(3)}`);
       violators.add(z(2).id).add(z(3).id);
@@ -88,7 +109,7 @@ function App() {
     setCheckResult(
       violations.length === 0
         ? "✅ Rotation is legal!"
-        : "❌ Illegal rotation:\n" + violations.join("; ")
+        : "❌ Illegal rotation:\n" + violations.join(";\n")
     );
   };
 
@@ -97,7 +118,7 @@ function App() {
       <div className="flex gap-6 w-full max-w-screen-xl px-6">
         {/* Sidebar */}
         <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
-          <h2 className="text-xl font-bold">Players</h2>
+          <h2 className="text-xl font-bold">Players (R{currentRotation + 1})</h2>
           <button
             className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
             onClick={addPlayer}
