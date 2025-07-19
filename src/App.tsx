@@ -96,35 +96,14 @@ function App() {
     const violations: string[] = [];
     const violators = new Set<string>();
 
-    if (z(1).y < z(2).y) {
-      violations.push(`${name(1)} must be behind ${name(2)}`);
-      violators.add(z(1).id).add(z(2).id);
-    }
-    if (z(6).y < z(3).y) {
-      violations.push(`${name(6)} must be behind ${name(3)}`);
-      violators.add(z(6).id).add(z(3).id);
-    }
-    if (z(5).y < z(4).y) {
-      violations.push(`${name(5)} must be behind ${name(4)}`);
-      violators.add(z(5).id).add(z(4).id);
-    }
+    if (z(1).y < z(2).y) violations.push(`${name(1)} must be behind ${name(2)}`), violators.add(z(1).id).add(z(2).id);
+    if (z(6).y < z(3).y) violations.push(`${name(6)} must be behind ${name(3)}`), violators.add(z(6).id).add(z(3).id);
+    if (z(5).y < z(4).y) violations.push(`${name(5)} must be behind ${name(4)}`), violators.add(z(5).id).add(z(4).id);
 
-    if (z(2).x < z(3).x) {
-      violations.push(`${name(2)} must be to the right of ${name(3)}`);
-      violators.add(z(2).id).add(z(3).id);
-    }
-    if (z(3).x < z(4).x) {
-      violations.push(`${name(3)} must be to the right of ${name(4)}`);
-      violators.add(z(3).id).add(z(4).id);
-    }
-    if (z(1).x < z(6).x) {
-      violations.push(`${name(1)} must be to the right of ${name(6)}`);
-      violators.add(z(1).id).add(z(6).id);
-    }
-    if (z(6).x < z(5).x) {
-      violations.push(`${name(6)} must be to the right of ${name(5)}`);
-      violators.add(z(6).id).add(z(5).id);
-    }
+    if (z(2).x < z(3).x) violations.push(`${name(2)} must be to the right of ${name(3)}`), violators.add(z(2).id).add(z(3).id);
+    if (z(3).x < z(4).x) violations.push(`${name(3)} must be to the right of ${name(4)}`), violators.add(z(3).id).add(z(4).id);
+    if (z(1).x < z(6).x) violations.push(`${name(1)} must be to the right of ${name(6)}`), violators.add(z(1).id).add(z(6).id);
+    if (z(6).x < z(5).x) violations.push(`${name(6)} must be to the right of ${name(5)}`), violators.add(z(6).id).add(z(5).id);
 
     setViolatingIds(Array.from(violators));
     setCheckResult(
@@ -180,12 +159,6 @@ function App() {
           >
             + Add Player
           </button>
-          <button
-            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded w-full"
-            onClick={rotateFromPrevious}
-          >
-            Rotate From Previous Row
-          </button>
           {players.map((player) => (
             <div key={player.id} className="border p-2 rounded bg-white space-y-1">
               <input
@@ -228,34 +201,47 @@ function App() {
         {/* Court */}
         <Court players={players} setPlayers={setPlayers} violatingIds={violatingIds} />
 
-        {/* Rotation Rule Tools */}
-        <div className="w-64 bg-white p-4 rounded shadow space-y-4 h-fit">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={rotationCheckEnabled}
-              onChange={(e) => setRotationCheckEnabled(e.target.checked)}
-            />
-            <span className="text-sm">6-player rotation rules</span>
-          </label>
+        {/* Right Panel */}
+        <div className="w-64 space-y-4">
+          {/* Rule Controls */}
+          <div className="bg-white p-4 rounded shadow space-y-4 h-fit">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={rotationCheckEnabled}
+                onChange={(e) => setRotationCheckEnabled(e.target.checked)}
+              />
+              <span className="text-sm">6-player rotation rules</span>
+            </label>
 
-          <button
-            className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded w-full"
-            onClick={checkLegality}
-            disabled={!rotationCheckEnabled}
-          >
-            Check Rotation Legality
-          </button>
-
-          {checkResult && (
-            <p
-              className={`text-sm whitespace-pre-wrap ${
-                checkResult.includes('Illegal') ? 'text-red-600' : 'text-green-600'
-              }`}
+            <button
+              className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded w-full font-semibold"
+              onClick={checkLegality}
+              disabled={!rotationCheckEnabled}
             >
-              {checkResult}
-            </p>
-          )}
+              Check Rotation Legality
+            </button>
+
+            {checkResult && (
+              <p
+                className={`text-sm whitespace-pre-wrap ${
+                  checkResult.includes('Illegal') ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                {checkResult}
+              </p>
+            )}
+          </div>
+
+          {/* Rotate Button */}
+          <div className="bg-white p-4 rounded shadow">
+            <button
+              className="bg-indigo-600 hover:bg-indigo-700 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
+              onClick={rotateFromPrevious}
+            >
+              🔁 Rotate From Previous Row
+            </button>
+          </div>
         </div>
       </div>
     </div>
