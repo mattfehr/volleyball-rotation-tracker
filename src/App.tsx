@@ -54,9 +54,30 @@ function App() {
     setPlayers(players.filter(p => p.id !== id));
   };
 
+  const rotateFromPrevious = () => {
+    const sourceIndex = (currentRotation + 5) % 6;
+    const prevPlayers = rotations[sourceIndex];
+
+    const rotated = prevPlayers.map(p => {
+      const oldZone = p.zone;
+      const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
+      return {
+        ...p,
+        id: uuid(),
+        zone: newZone,
+      };
+    });
+
+    setRotations(prev => {
+      const updated = [...prev];
+      updated[currentRotation] = rotated;
+      return updated;
+    });
+  };
+
   const checkLegality = () => {
     if (players.length !== 6) {
-      setCheckResult("\u274C Must have exactly 6 players assigned to zones 1–6.");
+      setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
       setViolatingIds([]);
       return;
     }
@@ -64,7 +85,7 @@ function App() {
     const zoneMap = new Map(players.map(p => [p.zone, p]));
     const requiredZones = [1, 2, 3, 4, 5, 6];
     if (!requiredZones.every(z => zoneMap.has(z))) {
-      setCheckResult("\u274C All zones 1–6 must be assigned.");
+      setCheckResult("❌ All zones 1–6 must be assigned.");
       setViolatingIds([]);
       return;
     }
@@ -108,8 +129,8 @@ function App() {
     setViolatingIds(Array.from(violators));
     setCheckResult(
       violations.length === 0
-        ? "\u2705 Rotation is legal!"
-        : "\u274C Illegal rotation:\n" + violations.join(";\n")
+        ? "✅ Rotation is legal!"
+        : "❌ Illegal rotation:\n" + violations.join(";\n")
     );
   };
 
@@ -119,7 +140,7 @@ function App() {
       <div className="flex justify-between items-center w-full max-w-screen-xl mb-4 px-6">
         <button
           className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
-          onClick={() => setCurrentRotation((prev) => Math.max(prev - 1, 0))}
+          onClick={() => setCurrentRotation(Math.max(currentRotation - 1, 0))}
           disabled={currentRotation === 0}
         >
           ← Prev
@@ -141,7 +162,7 @@ function App() {
 
         <button
           className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
-          onClick={() => setCurrentRotation((prev) => Math.min(prev + 1, 5))}
+          onClick={() => setCurrentRotation(Math.min(currentRotation + 1, 5))}
           disabled={currentRotation === 5}
         >
           Next →
@@ -158,6 +179,12 @@ function App() {
             onClick={addPlayer}
           >
             + Add Player
+          </button>
+          <button
+            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded w-full"
+            onClick={rotateFromPrevious}
+          >
+            Rotate From Previous Row
           </button>
           {players.map((player) => (
             <div key={player.id} className="border p-2 rounded bg-white space-y-1">
@@ -207,7 +234,7 @@ function App() {
             <input
               type="checkbox"
               checked={rotationCheckEnabled}
-              onChange={() => setRotationCheckEnabled(!rotationCheckEnabled)}
+              onChange={(e) => setRotationCheckEnabled(e.target.checked)}
             />
             <span className="text-sm">6-player rotation rules</span>
           </label>
