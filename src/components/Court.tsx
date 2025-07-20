@@ -4,21 +4,32 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import type { Player } from '../models/Player';
+import CanvasOverlay, { type Stroke } from './CanvasOverlay'; // NEW
 
-//properties for court
+// properties for court
 type Props = {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   violatingIds?: string[];
+
+  // NEW for annotations
+  strokes: Stroke[];
+  setStrokes: (strokes: Stroke[]) => void;
+  currentTool: 'pen' | 'highlight' | 'eraser';
 };
 
-//helper component for a draggable player
-function DraggablePlayer({player, isViolating}: {player: Player; isViolating: boolean}) {
+// helper component for a draggable player
+function DraggablePlayer({
+  player,
+  isViolating,
+}: {
+  player: Player;
+  isViolating: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
   });
 
-  //reposition player
   const style = {
     transform: transform
       ? `translate(${transform.x + player.x}px, ${transform.y + player.y}px)`
@@ -40,10 +51,17 @@ function DraggablePlayer({player, isViolating}: {player: Player; isViolating: bo
   );
 }
 
-//main court component export
-export default function Court({ players, setPlayers, violatingIds }: Props) {
-  const handleDragEnd = (event: DragEndEvent) => {  //when a drag ends, it finds the dragged player, update position and sets the players
-    const { delta, active } = event;  //destructures the change and the item moved
+// main court component
+export default function Court({
+  players,
+  setPlayers,
+  violatingIds,
+  strokes,
+  setStrokes,
+  currentTool,
+}: Props) {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { delta, active } = event;
 
     setPlayers((prev) =>
       prev.map((player) =>
@@ -59,11 +77,22 @@ export default function Court({ players, setPlayers, violatingIds }: Props) {
   };
 
   return (
-    <div className="w-[900px] h-[900px] bg-orange-400 relative border-4 border-white mx-auto">
-      {/* Net line */}
+    <div className="w-[900px] h-[900px] relative border-4 border-white mx-auto">
+      {/* Court background */}
+      <div className="absolute w-full h-full bg-orange-400" />
+
+      {/* Net lines */}
       <div className="absolute top-0 left-0 w-full h-[8px] bg-white z-10" />
       <div className="absolute top-[300px] left-0 w-full h-[4px] bg-white z-10" />
 
+      {/* Annotation Canvas */}
+      <CanvasOverlay
+        strokes={strokes}
+        setStrokes={setStrokes}
+        currentTool={currentTool}
+      />
+
+      {/* Draggable Players */}
       <DndContext onDragEnd={handleDragEnd}>
         {players.map((player) => (
           <DraggablePlayer

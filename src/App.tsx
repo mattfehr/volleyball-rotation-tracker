@@ -2,47 +2,56 @@ import { useState } from 'react';
 import type { Player } from './models/Player';
 import Court from './components/Court';
 import { v4 as uuid } from 'uuid';
+import type { Stroke } from './components/CanvasOverlay';
 
 function App() {
-  //list of initial players of type player
   const initialPlayers: Player[] = [
     { id: uuid(), label: 'S', name: 'Alex', x: 200, y: 200, zone: 1 },
   ];
 
-  //rotations is a state variable with setRotations used to update the state - 2D array of players in rotations
   const [rotations, setRotations] = useState<Player[][]>(
     Array.from({ length: 6 }, (_, i) => (i === 0 ? initialPlayers : []))
   );
 
-  //which rotation is currently visible and its players
-  const [currentRotation, setCurrentRotation] = useState(0);  //default 0 (row 1)
+  const [currentRotation, setCurrentRotation] = useState(0);
   const players = rotations[currentRotation];
 
-  //update current rotations players - set players is a wrapper that takes a new list or update function
   const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
-    setRotations(prev => {  //set rotations called with a function as its argument that uses the previous rotation state as its parameter
-      const updated = [...prev]; //copy previous rotation array
-      const current = prev[currentRotation]; //get player list for current rotation
+    setRotations(prev => {
+      const updated = [...prev];
+      const current = prev[currentRotation];
       const next =
         typeof valueOrUpdater === 'function'
-          ? (valueOrUpdater as (prev: Player[]) => Player[])(current) //update by computing new list
-          : valueOrUpdater;                                           //replace
-      updated[currentRotation] = next;                                //update player in current rotation with new list
+          ? (valueOrUpdater as (prev: Player[]) => Player[])(current)
+          : valueOrUpdater;
+      updated[currentRotation] = next;
       return updated;
     });
   };
 
-  //hooks to manage ui states
-  const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);  //if 6 player rules is enabled
-  const [checkResult, setCheckResult] = useState<string | null>(null);      //stores result of most recent rotation check
-  const [violatingIds, setViolatingIds] = useState<string[]>([]);           //stores violator ids
+  const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
+  const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [violatingIds, setViolatingIds] = useState<string[]>([]);
 
-  //updates field K of a player
-  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
-    setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p)); //the map function is checking if id matches then changing fields and returning that accoridngly
+  // --- Annotation State ---
+  const [annotationStrokes, setAnnotationStrokes] = useState<Stroke[][]>(
+    Array.from({ length: 6 }, () => [])
+  );
+  const strokes = annotationStrokes[currentRotation];
+  const setStrokes = (newStrokes: Stroke[]) => {
+    setAnnotationStrokes(prev => {
+      const updated = [...prev];
+      updated[currentRotation] = newStrokes;
+      return updated;
+    });
   };
 
-  //create a new player by passing set players an array of the old players copied with a new instance 
+  const [currentTool, setCurrentTool] = useState<'pen' | 'highlight' | 'eraser'>('pen');
+
+  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
+    setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
   const addPlayer = () => {
     setPlayers([
       ...players,
@@ -57,34 +66,31 @@ function App() {
     ]);
   };
 
-  //remove a player by giving set players a new list of only players not matching the id
   const removePlayer = (id: string) => {
     setPlayers(players.filter(p => p.id !== id));
   };
 
-  //gets player from previous rotation and rotate their zones forward
   const rotateFromPrevious = () => {
-    const sourceIndex = (currentRotation + 5) % 6; //get previous row
-    const prevPlayers = rotations[sourceIndex];    //get previous rows players
+    const sourceIndex = (currentRotation + 5) % 6;
+    const prevPlayers = rotations[sourceIndex];
 
     const rotated = prevPlayers.map(p => {
       const oldZone = p.zone;
-      const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined; //update zone
-      return {            //return player objects with the new zones
+      const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
+      return {
         ...p,
         id: uuid(),
         zone: newZone,
       };
     });
 
-    setRotations(prev => {                //update rotations state
+    setRotations(prev => {
       const updated = [...prev];
       updated[currentRotation] = rotated;
       return updated;
     });
   };
 
-  //check if the rotations legal
   const checkLegality = () => {
     if (players.length !== 6) {
       setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
@@ -100,8 +106,7 @@ function App() {
       return;
     }
 
-    //helper functions to the player by zone and their name
-    const z = (n: number) => zoneMap.get(n)!;       
+    const z = (n: number) => zoneMap.get(n)!;
     const name = (n: number) => `${z(n).name || "Unnamed"}`;
 
     const violations: string[] = [];
@@ -210,7 +215,14 @@ function App() {
         </div>
 
         {/* Court */}
-        <Court players={players} setPlayers={setPlayers} violatingIds={violatingIds} />
+        <Court
+          players={players}
+          setPlayers={setPlayers}
+          violatingIds={violatingIds}
+          strokes={strokes}
+          setStrokes={setStrokes}
+          currentTool={currentTool}
+        />
 
         {/* Right Panel */}
         <div className="w-64 space-y-4">
@@ -251,6 +263,30 @@ function App() {
               onClick={rotateFromPrevious}
             >
               🔁 Rotate From Previous Row
+            </button>
+          </div>
+
+          {/* Annotation Tools */}
+          <div className="bg-white p-4 rounded shadow space-y-2">
+            <p className="font-semibold text-sm">Annotation Tool</p>
+            <div className="flex gap-2 flex-wrap">
+              {(['pen', 'highlight', 'eraser'] as const).map(tool => (
+                <button
+                  key={tool}
+                  onClick={() => setCurrentTool(tool)}
+                  className={`px-2 py-1 rounded text-sm border ${
+                    currentTool === tool ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                  }`}
+                >
+                  {tool}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setStrokes([])}
+              className="mt-2 text-sm text-red-600 underline"
+            >
+              Clear Annotations
             </button>
           </div>
         </div>
