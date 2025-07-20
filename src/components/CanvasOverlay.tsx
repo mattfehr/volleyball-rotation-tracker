@@ -20,7 +20,25 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
 
-  // Adjust canvas size and redraw on every stroke update
+  // Utility to draw a stroke
+  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = stroke.tool === 'highlight' ? 0.3 : 1.0;
+
+    ctx.beginPath();
+    stroke.points.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+
+    ctx.globalAlpha = 1.0; // reset
+  };
+
+  // Redraw all strokes when strokes array changes
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -30,22 +48,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     canvas.height = canvas.offsetHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (const stroke of strokes) {
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.globalAlpha = stroke.tool === 'highlight' ? 0.3 : 1.0;
-      ctx.beginPath();
-      stroke.points.forEach((pt, idx) => {
-        if (idx === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      });
-      ctx.stroke();
-    }
-
-    ctx.globalAlpha = 1.0; // reset
+    strokes.forEach(stroke => drawStroke(ctx, stroke));
   }, [strokes]);
 
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
@@ -70,11 +73,21 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !currentStroke) return;
+
     const pos = getMousePos(e);
-    setCurrentStroke({
+    const updatedStroke = {
       ...currentStroke,
       points: [...currentStroke.points, pos],
-    });
+    };
+    setCurrentStroke(updatedStroke);
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (canvas && ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes.forEach(stroke => drawStroke(ctx, stroke));
+      drawStroke(ctx, updatedStroke); // draw current stroke live
+    }
   };
 
   const endDrawing = () => {

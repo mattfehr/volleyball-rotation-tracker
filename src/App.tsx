@@ -275,7 +275,7 @@ function App() {
                   key={tool}
                   onClick={() => setCurrentTool(tool)}
                   className={`px-2 py-1 rounded text-sm border ${
-                    currentTool === tool ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                    currentTool === tool ? 'bg-blue-500 text-black' : 'bg-gray-100'
                   }`}
                 >
                   {tool}
