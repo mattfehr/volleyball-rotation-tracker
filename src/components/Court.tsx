@@ -5,23 +5,20 @@ import {
 } from '@dnd-kit/core';
 import type { Player } from '../models/Player';
 
+//properties for court
 type Props = {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   violatingIds?: string[];
 };
 
-function DraggablePlayer({
-  player,
-  isViolating,
-}: {
-  player: Player;
-  isViolating: boolean;
-}) {
+//helper component for a draggable player
+function DraggablePlayer({player, isViolating}: {player: Player; isViolating: boolean}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
   });
 
+  //reposition player
   const style = {
     transform: transform
       ? `translate(${transform.x + player.x}px, ${transform.y + player.y}px)`
@@ -43,9 +40,10 @@ function DraggablePlayer({
   );
 }
 
+//main court component export
 export default function Court({ players, setPlayers, violatingIds }: Props) {
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { delta, active } = event;
+  const handleDragEnd = (event: DragEndEvent) => {  //when a drag ends, it finds the dragged player, update position and sets the players
+    const { delta, active } = event;  //destructures the change and the item moved
 
     setPlayers((prev) =>
       prev.map((player) =>
