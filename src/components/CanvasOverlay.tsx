@@ -26,8 +26,8 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    canvas.width = 900;
-    canvas.height = 900;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -88,7 +88,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   return (
     <canvas
       ref={canvasRef}
-      className="absolute top-0 left-0 w-[900px] h-[900px] z-0"
+      className="absolute top-0 left-0 w-full h-full z-0"
       onMouseDown={startDrawing}
       onMouseMove={draw}
       onMouseUp={endDrawing}
