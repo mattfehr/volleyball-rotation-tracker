@@ -270,23 +270,30 @@ function App() {
           <div className="bg-white p-4 rounded shadow space-y-2">
             <p className="font-semibold text-sm">Annotation Tool</p>
             <div className="flex gap-2 flex-wrap">
-              {(['pen', 'highlight', 'eraser'] as const).map(tool => (
-                <button
-                  key={tool}
-                  onClick={() => setCurrentTool(tool)}
-                  className={`px-2 py-1 rounded text-sm border ${
-                    currentTool === tool ? 'bg-blue-500 text-black' : 'bg-gray-100'
-                  }`}
-                >
-                  {tool}
-                </button>
-              ))}
+              {(['pen', 'highlight', 'eraser'] as const).map(tool => {
+                const label =
+                  tool === 'pen' ? '✏️ Pen' :
+                  tool === 'highlight' ? '🖌️ Highlight' :
+                  tool === 'eraser' ? '🧽 Erase' : tool;
+
+                return (
+                  <button
+                    key={tool}
+                    onClick={() => setCurrentTool(tool)}
+                    className={`px-2 py-1 rounded text-sm border ${
+                      currentTool === tool ? 'bg-blue-500 text-black' : 'bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             <button
               onClick={() => setStrokes([])}
-              className="mt-2 text-sm text-red-600 underline"
+              className="mt-2 text-sm text-red-600"
             >
-              Clear Annotations
+              🗑️ Clear 
             </button>
           </div>
         </div>
