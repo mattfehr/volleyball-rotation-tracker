@@ -197,9 +197,7 @@ function App() {
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex gap-6 w-full max-w-screen-xl px-6">
-        {/* Sidebar */}
+      <div className="flex gap-6 w-full max-w-screen-xl px-6 items-start">
         <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
           <h2 className="text-xl font-bold">Players (R{currentRotation + 1})</h2>
           <button
@@ -247,19 +245,18 @@ function App() {
           ))}
         </div>
 
-        {/* Court */}
-        <Court
-          players={players}
-          setPlayers={setPlayers}
-          violatingIds={violatingIds}
-          strokes={strokes}
-          setStrokes={setStrokes}
-          currentTool={currentTool}
-        />
+        <div style={{ width: '900px', height: '900px' }} className="shrink-0">
+          <Court
+            players={players}
+            setPlayers={setPlayers}
+            violatingIds={violatingIds}
+            strokes={strokes}
+            setStrokes={setStrokes}
+            currentTool={currentTool}
+          />
+        </div>
 
-        {/* Right Panel */}
         <div className="w-64 space-y-4">
-          {/* Rule Controls */}
           <div className="bg-white p-4 rounded shadow space-y-4 h-fit">
             <label className="flex items-center gap-2">
               <input
@@ -269,7 +266,6 @@ function App() {
               />
               <span className="text-sm">6-player rotation rules</span>
             </label>
-
             <button
               className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded w-full font-semibold"
               onClick={checkLegality}
@@ -277,7 +273,6 @@ function App() {
             >
               Check Rotation Legality
             </button>
-
             {checkResult && (
               <p
                 className={`text-sm whitespace-pre-wrap ${
@@ -289,7 +284,6 @@ function App() {
             )}
           </div>
 
-          {/* Rotate Button */}
           <div className="bg-white p-4 rounded shadow">
             <button
               className="bg-indigo-600 hover:bg-indigo-700 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
@@ -299,7 +293,6 @@ function App() {
             </button>
           </div>
 
-          {/* Annotation Tools */}
           <div className="bg-white p-4 rounded shadow space-y-2">
             <p className="font-semibold text-sm">Annotation Tool</p>
             <div className="flex gap-2 flex-wrap">
@@ -308,7 +301,6 @@ function App() {
                   tool === 'pen' ? '✏️ Pen' :
                   tool === 'highlight' ? '🖌️ Highlight' :
                   tool === 'eraser' ? '🧽 Erase' : tool;
-
                 return (
                   <button
                     key={tool}
@@ -330,7 +322,6 @@ function App() {
             </button>
           </div>
 
-          {/* Export PDF Button */}
           <div className="bg-white p-4 rounded shadow space-y-2">
             <button
               onClick={exportAllToPdf}
@@ -342,22 +333,23 @@ function App() {
         </div>
       </div>
 
-      {/* Hidden court renderings for export */}
       <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
         {rotations.map((players, i) => (
           <div
             key={i}
-            ref={(el) => {exportRefs.current[i] = el}}
+            ref={(el) => { exportRefs.current[i] = el; }}
             style={{ width: 900, height: 900 }}
           >
-            <Court
-              players={players}
-              setPlayers={() => {}}
-              violatingIds={[]}
-              strokes={annotationStrokes[i]}
-              setStrokes={() => {}}
-              currentTool="pen"
-            />
+            <div style={{ width: '900px', height: '900px' }} className="shrink-0">
+              <Court
+                players={players}
+                setPlayers={setPlayers}
+                violatingIds={[]}
+                strokes={annotationStrokes[i]}
+                setStrokes={() => {}}
+                currentTool="pen"
+              />
+            </div>
           </div>
         ))}
       </div>
