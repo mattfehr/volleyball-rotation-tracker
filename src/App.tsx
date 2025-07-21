@@ -8,7 +8,7 @@ import jsPDF from 'jspdf';
 
 function App() {
   const initialPlayers: Player[] = [
-    { id: uuid(), label: 'S', name: 'Alex', x: 500, y: 500, zone: 1 },
+    { id: uuid(), label: 'S', name: 'Alex', x: 650, y: 525, zone: 1 },
   ];
 
   const [rotations, setRotations] = useState<Player[][]>(
@@ -72,7 +72,7 @@ function App() {
   };
 
   const rotateFromPrevious = () => {
-    const locations = [[500, 500], [500, 100], [300, 100], [100, 100], [100, 500], [300, 500]];
+    const locations = [[650, 525], [625, 100], [400, 100], [150, 100], [150, 525], [400, 525]];
     const sourceIndex = (currentRotation + 5) % 6;
     const prevPlayers = rotations[sourceIndex];
 
@@ -325,7 +325,7 @@ function App() {
           <div className="bg-white p-4 rounded shadow space-y-2">
             <button
               onClick={exportAllToPdf}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded w-full"
+              className="bg-purple-600 hover:bg-purple-700 text-black px-3 py-2 rounded w-full"
             >
               📄 Export All Rotations as PDF
             </button>

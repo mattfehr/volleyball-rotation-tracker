@@ -42,11 +42,11 @@ function DraggablePlayer({
       {...listeners}
       {...attributes}
       style={style}
-      className={`absolute w-30 h-30 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md
+      className={`absolute w-32 h-32 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md
         ${isViolating ? 'bg-red-600 border-4 border-white animate-pulse' : 'bg-blue-600'}`}
     >
-      <span className="text-sm font-bold">{player.label}</span>
-      <small>{player.name}</small>
+      <span className="text-xl font-bold">{player.label}</span>
+      <span className="text-lg">{player.name}</span>
     </div>
   );
 }
