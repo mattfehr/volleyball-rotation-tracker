@@ -6,7 +6,7 @@ import type { Stroke } from './components/CanvasOverlay';
 
 function App() {
   const initialPlayers: Player[] = [
-    { id: uuid(), label: 'S', name: 'Alex', x: 200, y: 200, zone: 1 },
+    { id: uuid(), label: 'S', name: 'Alex', x: 500, y: 500, zone: 1 },
   ];
 
   const [rotations, setRotations] = useState<Player[][]>(
@@ -58,7 +58,7 @@ function App() {
       {
         id: uuid(),
         label: 'New',
-        name: '',
+        name: '',                 
         x: 100,
         y: 100,
         zone: undefined,
@@ -71,16 +71,27 @@ function App() {
   };
 
   const rotateFromPrevious = () => {
+    const locations = [[500, 500], [500, 100], [300, 100], [100, 100], [100, 500], [300, 500]];
     const sourceIndex = (currentRotation + 5) % 6;
     const prevPlayers = rotations[sourceIndex];
 
     const rotated = prevPlayers.map(p => {
       const oldZone = p.zone;
       const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
+      let x = p.x;
+      let y = p.y;
+
+      if (typeof newZone === 'number') {
+        x = locations[newZone - 1][0];
+        y = locations[newZone - 1][1];
+      }
+
       return {
         ...p,
         id: uuid(),
         zone: newZone,
+        x,
+        y,
       };
     });
 
@@ -303,3 +314,6 @@ function App() {
 }
 
 export default App;
+
+// fix the erasor and on the rotate from previous row button have them spawn at their zone
+// save, export, import 

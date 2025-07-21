@@ -92,8 +92,24 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
 
   const endDrawing = () => {
     if (currentStroke) {
-      setStrokes([...strokes, currentStroke]);
+      if (currentTool === 'eraser') {
+        const eraserPoints = currentStroke.points;
+
+        // Remove any stroke where any point is near an eraser point
+        const filtered = strokes.filter(stroke =>
+          !stroke.points.some(sp =>
+            eraserPoints.some(ep =>
+              Math.hypot(sp.x - ep.x, sp.y - ep.y) < stroke.width + 10 // collision radius
+            )
+          )
+        );
+
+        setStrokes(filtered);
+      } else {
+        setStrokes([...strokes, currentStroke]);
+      }
     }
+
     setIsDrawing(false);
     setCurrentStroke(null);
   };
