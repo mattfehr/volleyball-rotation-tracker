@@ -67,3 +67,50 @@ export default tseslint.config([
   },
 ])
 ```
+
+🧩 Database Structure (high-level)
+users
+id (UUID or unique string)
+
+username
+
+passwordHash (never store raw passwords)
+
+email (optional)
+
+rotations
+id (UUID)
+
+userId (FK to users)
+
+title (e.g. “6-2 Serve Receive”)
+
+createdAt
+
+updatedAt
+
+rotation_data
+rotationId (FK to rotations)
+
+rotationIndex (0–5 for R1–R6)
+
+players: list of {id, label, name, x, y, zone}
+
+annotations: list of strokes (as you already have)
+
+✅ Current Local Feature Roadmap
+We can start with client-side saving/loading and later connect to a backend:
+
+Export to JSON
+
+A .json file that includes all 6 rotations + annotations + optional title
+
+Import from JSON
+
+Load a previously saved rotation set
+
+Eventually: Connect to database
+
+Auth → User → Load their saved rotations
+
+Cloud save/load, editing, sharing

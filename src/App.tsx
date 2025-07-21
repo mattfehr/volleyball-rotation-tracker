@@ -141,6 +141,7 @@ function App() {
     );
   };
 
+  //PDF download
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const exportAllToPdf = async () => {
@@ -160,6 +161,27 @@ function App() {
     }
 
     pdf.save('volleyball-rotations.pdf');
+  };
+
+  //export to JSON
+  const exportToJson = () => {
+    const data = {
+      title: "Untitled Rotation Set",
+      rotations,
+      annotations: annotationStrokes,
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'rotation-set.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -201,7 +223,12 @@ function App() {
         </div>
 
         {/* Right: reserved for future actions */}
-        <div className="w-24" />
+        <button
+          onClick={exportToJson}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+        >
+          💾 Save
+        </button>
       </div>
 
       {/* Player Section */}
