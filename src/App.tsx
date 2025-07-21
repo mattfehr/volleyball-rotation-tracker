@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { Player } from './models/Player';
 import Court from './components/Court';
 import { v4 as uuid } from 'uuid';
 import type { Stroke } from './components/CanvasOverlay';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 
 function App() {
   const initialPlayers: Player[] = [
@@ -33,7 +35,6 @@ function App() {
   const [checkResult, setCheckResult] = useState<string | null>(null);
   const [violatingIds, setViolatingIds] = useState<string[]>([]);
 
-  // --- Annotation State ---
   const [annotationStrokes, setAnnotationStrokes] = useState<Stroke[][]>(
     Array.from({ length: 6 }, () => [])
   );
@@ -58,7 +59,7 @@ function App() {
       {
         id: uuid(),
         label: 'New',
-        name: '',                 
+        name: '',
         x: 100,
         y: 100,
         zone: undefined,
@@ -138,6 +139,27 @@ function App() {
         ? "✅ Rotation is legal!"
         : "❌ Illegal rotation:\n" + violations.join(";\n")
     );
+  };
+
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const exportAllToPdf = async () => {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [900, 900] });
+
+    for (let i = 0; i < 6; i++) {
+      const node = exportRefs.current[i];
+      if (!node) continue;
+
+      try {
+        const dataUrl = await toPng(node);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, 0, 900, 900);
+      } catch (err) {
+        console.error(`Failed to export rotation ${i + 1}:`, err);
+      }
+    }
+
+    pdf.save('volleyball-rotations.pdf');
   };
 
   return (
@@ -304,16 +326,43 @@ function App() {
               onClick={() => setStrokes([])}
               className="mt-2 text-sm text-red-600"
             >
-              🗑️ Clear 
+              🗑️ Clear
+            </button>
+          </div>
+
+          {/* Export PDF Button */}
+          <div className="bg-white p-4 rounded shadow space-y-2">
+            <button
+              onClick={exportAllToPdf}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded w-full"
+            >
+              📄 Export All Rotations as PDF
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Hidden court renderings for export */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        {rotations.map((players, i) => (
+          <div
+            key={i}
+            ref={(el) => {exportRefs.current[i] = el}}
+            style={{ width: 900, height: 900 }}
+          >
+            <Court
+              players={players}
+              setPlayers={() => {}}
+              violatingIds={[]}
+              strokes={annotationStrokes[i]}
+              setStrokes={() => {}}
+              currentTool="pen"
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 export default App;
-
-// fix the erasor and on the rotate from previous row button have them spawn at their zone
-// save, export, import 

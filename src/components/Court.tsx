@@ -42,7 +42,7 @@ function DraggablePlayer({
       {...listeners}
       {...attributes}
       style={style}
-      className={`absolute w-24 h-24 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md
+      className={`absolute w-30 h-30 rounded-full text-white flex flex-col items-center justify-center cursor-move shadow-md
         ${isViolating ? 'bg-red-600 border-4 border-white animate-pulse' : 'bg-blue-600'}`}
     >
       <span className="text-sm font-bold">{player.label}</span>
