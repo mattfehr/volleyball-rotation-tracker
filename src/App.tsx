@@ -165,16 +165,20 @@ function App() {
   return (
     <div className="min-h-screen bg-green-700 flex justify-center items-start p-6 flex-col">
       {/* Rotation Navigation */}
-      <div className="flex justify-between items-center w-full max-w-screen-xl mb-4 px-6">
-        <button
-          className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
-          onClick={() => setCurrentRotation(Math.max(currentRotation - 1, 0))}
-          disabled={currentRotation === 0}
-        >
-          ← Prev
-        </button>
+      <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full max-w-screen-xl mb-4 px-6">
+        {/* Left: Title or future controls */}
+        <div className="mb-2 sm:mb-0 text-white font-semibold text-lg">Rotation Editor</div>
 
-        <div className="flex gap-2">
+        {/* Center: Arrows + Tabs */}
+        <div className="flex gap-2 items-center">
+          <button
+            className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50 mr-16"
+            onClick={() => setCurrentRotation(Math.max(currentRotation - 1, 0))}
+            disabled={currentRotation === 0}
+          >
+            ← Prev
+          </button>
+
           {[...Array(6)].map((_, i) => (
             <button
               key={i}
@@ -186,17 +190,21 @@ function App() {
               R{i + 1}
             </button>
           ))}
+
+          <button
+            className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50 ml-16"
+            onClick={() => setCurrentRotation(Math.min(currentRotation + 1, 5))}
+            disabled={currentRotation === 5}
+          >
+            Next →
+          </button>
         </div>
 
-        <button
-          className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50"
-          onClick={() => setCurrentRotation(Math.min(currentRotation + 1, 5))}
-          disabled={currentRotation === 5}
-        >
-          Next →
-        </button>
+        {/* Right: reserved for future actions */}
+        <div className="w-24" />
       </div>
 
+      {/* Player Section */}
       <div className="flex gap-6 w-full max-w-screen-xl px-6 items-start">
         <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
           <h2 className="text-xl font-bold">Players (R{currentRotation + 1})</h2>
@@ -244,7 +252,8 @@ function App() {
             </div>
           ))}
         </div>
-
+        
+        {/* Court */}
         <div style={{ width: '900px', height: '900px' }} className="shrink-0">
           <Court
             players={players}
@@ -255,7 +264,8 @@ function App() {
             currentTool={currentTool}
           />
         </div>
-
+        
+        {/* Right Panel */}
         <div className="w-64 space-y-4">
           <div className="bg-white p-4 rounded shadow space-y-4 h-fit">
             <label className="flex items-center gap-2">
@@ -358,3 +368,5 @@ function App() {
 }
 
 export default App;
+
+//move the arrows 
