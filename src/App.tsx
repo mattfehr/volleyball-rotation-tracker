@@ -184,6 +184,36 @@ function App() {
     document.body.removeChild(link);
   };
 
+  const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const result = e.target?.result;
+        if (typeof result === 'string') {
+          const parsed = JSON.parse(result);
+
+          if (!Array.isArray(parsed.rotations) || !Array.isArray(parsed.annotations)) {
+            alert("Invalid file format.");
+            return;
+          }
+
+          setRotations(parsed.rotations);
+          setAnnotationStrokes(parsed.annotations);
+          setCurrentRotation(0); // reset to R1
+
+          alert("✅ Rotation set loaded!");
+        }
+      } catch (err) {
+        alert("❌ Failed to load rotation set.");
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-h-screen bg-green-700 flex justify-center items-start p-6 flex-col">
       {/* Rotation Navigation */}
@@ -223,12 +253,27 @@ function App() {
         </div>
 
         {/* Right: reserved for future actions */}
-        <button
-          onClick={exportToJson}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-        >
-          💾 Save
-        </button>
+        <div className="flex gap-2">
+          <input
+            id="import-json"
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={importFromJson}
+          />
+          <label htmlFor="import-json">
+            <span className="bg-green-600 hover:bg-green-700 text-black px-3 py-1 rounded cursor-pointer">
+              📥 Import JSON
+            </span>
+          </label>
+
+          <button
+            onClick={exportToJson}
+            className="bg-blue-600 hover:bg-blue-700 text-black px-3 py-1 rounded"
+          >
+            💾 Export JSON
+          </button>
+        </div>
       </div>
 
       {/* Player Section */}
