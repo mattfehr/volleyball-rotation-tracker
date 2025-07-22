@@ -448,5 +448,3 @@ function App() {
 }
 
 export default App;
-
-//move the arrows 

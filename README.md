@@ -114,3 +114,12 @@ Eventually: Connect to database
 Auth → User → Load their saved rotations
 
 Cloud save/load, editing, sharing
+
+users/
+  userID/
+    rotations/
+      rotationID: {
+        title,
+        players[],
+        annotations[],
+      }
