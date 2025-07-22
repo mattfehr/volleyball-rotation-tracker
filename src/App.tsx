@@ -7,6 +7,8 @@ import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 function App() {
+  const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
+
   const initialPlayers: Player[] = [
     { id: uuid(), label: 'S', name: 'Alex', x: 650, y: 525, zone: 1 },
   ];
@@ -166,7 +168,7 @@ function App() {
   //export to JSON
   const exportToJson = () => {
     const data = {
-      title: "Untitled Rotation Set",
+      title: rotationTitle,
       rotations,
       annotations: annotationStrokes,
     };
@@ -219,7 +221,13 @@ function App() {
       {/* Rotation Navigation */}
       <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full max-w-screen-xl mb-4 px-6">
         {/* Left: Title or future controls */}
-        <div className="mb-2 sm:mb-0 text-white font-semibold text-lg">Rotation Editor</div>
+        <input
+          type="text"
+          value={rotationTitle}
+          onChange={(e) => setRotationTitle(e.target.value)}
+          placeholder="Untitled Rotation"
+          className="inline-flex bg-transparent text-white font-semibold text-lg outline-none border-b border-white focus:border-yellow-400 px-1 w-fit max-w-[180px]"
+        />
 
         {/* Center: Arrows + Tabs */}
         <div className="flex gap-2 items-center">
