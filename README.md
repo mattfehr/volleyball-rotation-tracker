@@ -123,3 +123,11 @@ users/
         players[],
         annotations[],
       }
+
+todo:
+have a no draw button
+{username}@
+all screen resizing
+library
+exit and logout button
+gitignore
