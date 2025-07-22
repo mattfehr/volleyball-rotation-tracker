@@ -5,8 +5,8 @@ import type { Stroke } from '../components/CanvasOverlay';
 
 export type RotationSet = {
   title: string;
-  players: Player[][];
-  annotations: Stroke[][];
+  players: Record<string, Player[]>;
+  annotations: Record<string, Stroke[]>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

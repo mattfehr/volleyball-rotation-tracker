@@ -171,24 +171,27 @@ function CourtEditor() {
   };
 
   //save
-	const saveToCloud = async () => {
-		if (!user) {
-			alert("❌ You must be logged in to save.");
-			return;
-		}
+  const convertRotationArrayToObject = <T,>(arr: T[][]): Record<string, T[]> =>
+    Object.fromEntries(arr.map((item, i) => [`R${i + 1}`, item]));
 
-		try {
-			const id = await saveRotationSet(user.uid, {
-				title: rotationTitle,
-				players: rotations,
-				annotations: annotationStrokes,
-			});
-			alert(`✅ Saved to cloud! Rotation ID: ${id}`);
-		} catch (error) {
-			console.error(error);
-			alert("❌ Failed to save to cloud.");
-		}
-	};
+  const saveToCloud = async () => {
+    if (!user) {
+      alert("❌ You must be logged in to save.");
+      return;
+    }
+
+    try {
+      const id = await saveRotationSet(user.uid, {
+        title: rotationTitle,
+        players: convertRotationArrayToObject(rotations),
+        annotations: convertRotationArrayToObject(annotationStrokes),
+      });
+      alert(`✅ Saved to cloud! Rotation ID: ${id}`);
+    } catch (error) {
+      console.error(error);
+      alert("❌ Failed to save to cloud.");
+    }
+  };
 
   const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
