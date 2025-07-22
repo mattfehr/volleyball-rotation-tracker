@@ -5,8 +5,13 @@ import { v4 as uuid } from 'uuid';
 import type { Stroke } from './CanvasOverlay';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
+import { useAuth } from '../contexts/AuthContext';
+import { saveRotationSet } from '../lib/firestore';
+
 
 function CourtEditor() {
+	const { user } = useAuth(); // Make sure this is at the top of your component
+
   const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
 
   const initialPlayers: Player[] = [
@@ -165,26 +170,25 @@ function CourtEditor() {
     pdf.save('volleyball-rotations.pdf');
   };
 
-  //export to JSON
-  const exportToJson = () => {
-    const data = {
-      title: rotationTitle,
-      rotations,
-      annotations: annotationStrokes,
-    };
+  //save
+	const saveToCloud = async () => {
+		if (!user) {
+			alert("❌ You must be logged in to save.");
+			return;
+		}
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'rotation-set.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+		try {
+			const id = await saveRotationSet(user.uid, {
+				title: rotationTitle,
+				players: rotations,
+				annotations: annotationStrokes,
+			});
+			alert(`✅ Saved to cloud! Rotation ID: ${id}`);
+		} catch (error) {
+			console.error(error);
+			alert("❌ Failed to save to cloud.");
+		}
+	};
 
   const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -276,10 +280,10 @@ function CourtEditor() {
           </label>
 
           <button
-            onClick={exportToJson}
+            onClick={saveToCloud}
             className="bg-blue-600 hover:bg-blue-700 text-black px-3 py-1 rounded"
           >
-            💾 Export JSON
+            💾 Save
           </button>
         </div>
       </div>
