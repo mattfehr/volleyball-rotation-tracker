@@ -7,6 +7,7 @@ import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { saveRotationSet, getRotationSetById } from '../lib/firestore';
+import { useNavigate } from 'react-router-dom';
 
 
 function CourtEditor() {
@@ -38,6 +39,7 @@ function CourtEditor() {
     loadFromCloud();
   }, [user]);
 
+  const navigate = useNavigate();
 
   const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
 
@@ -240,37 +242,6 @@ function CourtEditor() {
     }
   };
 
-
-  const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const result = e.target?.result;
-        if (typeof result === 'string') {
-          const parsed = JSON.parse(result);
-
-          if (!Array.isArray(parsed.rotations) || !Array.isArray(parsed.annotations)) {
-            alert("Invalid file format.");
-            return;
-          }
-
-          setRotations(parsed.rotations);
-          setAnnotationStrokes(parsed.annotations);
-          setCurrentRotation(0); // reset to R1
-
-          alert("✅ Rotation set loaded!");
-        }
-      } catch (err) {
-        alert("❌ Failed to load rotation set.");
-        console.error(err);
-      }
-    };
-    reader.readAsText(file);
-  };
-
   return (
     <div className="min-h-screen bg-green-700 flex justify-center items-start p-6 flex-col">
       {/* Rotation Navigation */}
@@ -317,24 +288,18 @@ function CourtEditor() {
 
         {/* Right: reserved for future actions */}
         <div className="flex gap-2">
-          <input
-            id="import-json"
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={importFromJson}
-          />
-          <label htmlFor="import-json">
-            <span className="bg-green-600 hover:bg-green-700 text-black px-3 py-1 rounded cursor-pointer">
-              📥 Import JSON
-            </span>
-          </label>
-
           <button
             onClick={saveToCloud}
-            className="bg-blue-600 hover:bg-blue-700 text-black px-3 py-1 rounded"
+            className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
           >
             💾 Save
+          </button>
+
+          <button
+            onClick={() => navigate('/library')}
+            className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
+          >
+            🔙 Exit
           </button>
         </div>
       </div>
