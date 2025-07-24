@@ -207,11 +207,31 @@ function CourtEditor() {
       return;
     }
 
+    // Sanitize individual player fields
+    const sanitizePlayers = (players: Player[]): Player[] =>
+      players.map(p => ({
+        id: p.id,
+        label: p.label ?? '',
+        name: p.name ?? '',
+        x: p.x,
+        y: p.y,
+        zone: p.zone ?? null, // Firestore allows null, not undefined
+      }));
+
+    // Convert and sanitize all 6 rotations
+    const sanitizedRotations = convertRotationArrayToObject(
+      rotations.map(sanitizePlayers)
+    );
+
+    const sanitizedAnnotations = convertRotationArrayToObject(annotationStrokes);
+
+    const title = rotationTitle?.trim() || "Untitled";
+
     try {
       const id = await saveRotationSet(user.uid, {
-        title: rotationTitle,
-        players: convertRotationArrayToObject(rotations),
-        annotations: convertRotationArrayToObject(annotationStrokes),
+        title,
+        players: sanitizedRotations,
+        annotations: sanitizedAnnotations,
       });
       alert(`✅ Saved to cloud! Rotation ID: ${id}`);
     } catch (error) {
@@ -219,6 +239,7 @@ function CourtEditor() {
       alert("❌ Failed to save to cloud.");
     }
   };
+
 
   const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
