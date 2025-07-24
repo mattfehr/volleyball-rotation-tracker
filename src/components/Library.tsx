@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserRotationSets } from '../lib/firestore';
 import type { RotationSet } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
 
 export default function Library() {
   const { user } = useAuth();
@@ -21,7 +23,18 @@ export default function Library() {
 
   return (
     <div className="min-h-screen bg-green-800 text-white p-8">
-      <h1 className="text-3xl font-bold mb-6">📂 My Saved Rotations</h1>
+      {/* Header + Logout */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          📂 My Saved Rotations
+        </h1>
+        <button
+          onClick={() => signOut(auth)}
+          className="bg-red-600 hover:bg-red-700 text-black px-4 py-1.5 rounded font-semibold shadow"
+        >
+          🔓 Log Out
+        </button>
+      </div>
 
       {sets.length === 0 ? (
         <p>No saved rotations yet.</p>
