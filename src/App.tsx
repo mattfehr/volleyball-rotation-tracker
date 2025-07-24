@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthForm from './components/AuthForm';
 import CourtEditor from './components/CourtEditor';
+import Library from './components/Library'; // ✅ new import
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -11,11 +12,21 @@ function App() {
     <Routes>
       <Route
         path="/auth"
-        element={user ? <Navigate to="/" replace /> : <AuthForm />}
+        element={user ? <Navigate to="/library" replace /> : <AuthForm />}
       />
       <Route
         path="/"
-        element={user ? <CourtEditor /> : <Navigate to="/auth" replace state={{ from: location }} />}
+        element={
+          user
+            ? localStorage.getItem('rotation-id')
+              ? <CourtEditor />
+              : <Navigate to="/library" replace />
+            : <Navigate to="/auth" replace />
+        }
+      />
+      <Route
+        path="/library"
+        element={user ? <Library /> : <Navigate to="/auth" replace state={{ from: location }} />}
       />
     </Routes>
   );

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Player } from '../models/Player';
 import Court from './Court';
 import { v4 as uuid } from 'uuid';
@@ -6,11 +6,38 @@ import type { Stroke } from './CanvasOverlay';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
-import { saveRotationSet } from '../lib/firestore';
+import { saveRotationSet, getRotationSetById } from '../lib/firestore';
 
 
 function CourtEditor() {
 	const { user } = useAuth(); // Make sure this is at the top of your component
+
+  useEffect(() => {
+    const loadFromCloud = async () => {
+      const id = localStorage.getItem('rotation-id');
+      if (!id || !user) return;
+
+      try {
+        const set = await getRotationSetById(user.uid, id);
+        if (!set) {
+          alert('❌ Failed to load rotation set.');
+          return;
+        }
+
+        setRotationTitle(set.title || 'Untitled');
+        setRotations(Object.values(set.players));
+        setAnnotationStrokes(Object.values(set.annotations));
+        setCurrentRotation(0);
+        localStorage.removeItem('rotation-id');
+      } catch (err) {
+        console.error('Failed to load from cloud:', err);
+        alert('❌ Error loading rotation set.');
+      }
+    };
+
+    loadFromCloud();
+  }, [user]);
+
 
   const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
 

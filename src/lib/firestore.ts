@@ -32,3 +32,9 @@ export async function getUserRotationSets(userId: string): Promise<(RotationSet 
     ...doc.data(),
   })) as any;
 }
+
+export async function getRotationSetById(userId: string, rotationId: string): Promise<RotationSet | null> {
+  const ref = doc(db, 'users', userId, 'rotations', rotationId);
+  const snapshot = await getDoc(ref);
+  return snapshot.exists() ? (snapshot.data() as RotationSet) : null;
+}
