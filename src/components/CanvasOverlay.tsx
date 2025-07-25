@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 
-type Tool = 'pen' | 'highlight' | 'eraser';
+type Tool = 'none' | 'pen' | 'highlight' | 'eraser';
 
 export type Stroke = {
   tool: Tool;
@@ -60,6 +60,8 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (currentTool === 'none') return;
+
     const pos = getMousePos(e);
     const stroke: Stroke = {
       tool: currentTool,
@@ -72,7 +74,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !currentStroke) return;
+    if (currentTool == 'none' || !isDrawing || !currentStroke) return;
 
     const pos = getMousePos(e);
     const updatedStroke = {
@@ -91,6 +93,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   };
 
   const endDrawing = () => {
+    if (currentTool == 'none') return;
     if (currentStroke) {
       if (currentTool === 'eraser') {
         const eraserPoints = currentStroke.points;

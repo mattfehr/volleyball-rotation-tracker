@@ -6,7 +6,7 @@ import type { Stroke } from './CanvasOverlay';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
-import { saveRotationSet, getRotationSetById } from '../lib/firestore';
+import { getRotationSetById } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
 import { setDoc, doc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -105,7 +105,7 @@ function CourtEditor() {
     });
   };
 
-  const [currentTool, setCurrentTool] = useState<'pen' | 'highlight' | 'eraser'>('pen');
+  const [currentTool, setCurrentTool] = useState<'none' | 'pen' | 'highlight' | 'eraser'>('none');
 
   const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
     setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -439,8 +439,9 @@ function CourtEditor() {
           <div className="bg-white p-4 rounded shadow space-y-2">
             <p className="font-semibold text-sm">Annotation Tool</p>
             <div className="flex gap-2 flex-wrap">
-              {(['pen', 'highlight', 'eraser'] as const).map(tool => {
+              {(['none', 'pen', 'highlight', 'eraser'] as const).map(tool => {
                 const label =
+                  tool === 'none' ? '🚫 None' :
                   tool === 'pen' ? '✏️ Pen' :
                   tool === 'highlight' ? '🖌️ Highlight' :
                   tool === 'eraser' ? '🧽 Erase' : tool;

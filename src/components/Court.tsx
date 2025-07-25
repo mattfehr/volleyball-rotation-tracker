@@ -15,7 +15,7 @@ type Props = {
   // NEW for annotations
   strokes: Stroke[];
   setStrokes: (strokes: Stroke[]) => void;
-  currentTool: 'pen' | 'highlight' | 'eraser';
+  currentTool: 'none' | 'pen' | 'highlight' | 'eraser';
 };
 
 // helper component for a draggable player
