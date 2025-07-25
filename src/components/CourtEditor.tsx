@@ -8,10 +8,15 @@ import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { saveRotationSet, getRotationSetById } from '../lib/firestore';
 import { useNavigate } from 'react-router-dom';
+import { setDoc, doc, addDoc, collection, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+
 
 
 function CourtEditor() {
 	const { user } = useAuth(); // Make sure this is at the top of your component
+
+  const [rotationId, setRotationId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadFromCloud = async () => {
@@ -30,6 +35,7 @@ function CourtEditor() {
         ]);
         setAnnotationStrokes(Array.from({ length: 6 }, () => []));
         setCurrentRotation(0);
+        setRotationId(null); // ✅ explicitly clear
         return;
       }
 
@@ -44,6 +50,7 @@ function CourtEditor() {
         setRotations(Object.values(set.players));
         setAnnotationStrokes(Object.values(set.annotations));
         setCurrentRotation(0);
+        setRotationId(id); // ✅ track the ID for later updates
         localStorage.removeItem('rotation-id');
       } catch (err) {
         console.error('Failed to load from cloud:', err);
@@ -53,7 +60,6 @@ function CourtEditor() {
 
     loadFromCloud();
   }, [user]);
-
 
   const navigate = useNavigate();
 
@@ -236,7 +242,6 @@ function CourtEditor() {
         zone: p.zone ?? null, // Firestore allows null, not undefined
       }));
 
-    // Convert and sanitize all 6 rotations
     const sanitizedRotations = convertRotationArrayToObject(
       rotations.map(sanitizePlayers)
     );
@@ -245,13 +250,25 @@ function CourtEditor() {
 
     const title = rotationTitle?.trim() || "Untitled";
 
+    const data = {
+      title,
+      players: sanitizedRotations,
+      annotations: sanitizedAnnotations,
+      updatedAt: Timestamp.now(),
+      createdAt: Timestamp.now(), // Will be overwritten if updating
+    };
+
     try {
-      const id = await saveRotationSet(user.uid, {
-        title,
-        players: sanitizedRotations,
-        annotations: sanitizedAnnotations,
-      });
-      alert(`✅ Saved to cloud! Rotation ID: ${id}`);
+      if (rotationId) {
+        // ✅ Update existing document
+        await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, { merge: true });
+        alert(`✅ Updated "${title}"`);
+      } else {
+        // ➕ Create new document
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'rotations'), data);
+        setRotationId(docRef.id); // Track new ID
+        alert(`✅ Saved new rotation! ID: ${docRef.id}`);
+      }
     } catch (error) {
       console.error(error);
       alert("❌ Failed to save to cloud.");

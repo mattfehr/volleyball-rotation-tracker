@@ -128,6 +128,5 @@ todo:
 have a no draw button
 {username}@
 all screen resizing
-library
-exit and logout button
-gitignore
+making duplicates on save instead of updating
+rotating forward on save
