@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, doc, getDoc, query, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, getDocs, doc, getDoc, query, Timestamp } from 'firebase/firestore';
 import type { Player } from '../models/Player';
 import type { Stroke } from '../components/CanvasOverlay';
 
@@ -37,4 +37,9 @@ export async function getRotationSetById(userId: string, rotationId: string): Pr
   const ref = doc(db, 'users', userId, 'rotations', rotationId);
   const snapshot = await getDoc(ref);
   return snapshot.exists() ? (snapshot.data() as RotationSet) : null;
+}
+
+export async function deleteRotationSet(userId: string, rotationId: string) {
+  const ref = doc(db, 'users', userId, 'rotations', rotationId);
+  await deleteDoc(ref);
 }

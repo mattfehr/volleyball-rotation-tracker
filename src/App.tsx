@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthForm from './components/AuthForm';
 import CourtEditor from './components/CourtEditor';
-import Library from './components/Library'; // ✅ new import
+import Library from './components/Library'; 
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -16,13 +16,7 @@ function App() {
       />
       <Route
         path="/"
-        element={
-          user
-            ? localStorage.getItem('rotation-id')
-              ? <CourtEditor />
-              : <Navigate to="/library" replace />
-            : <Navigate to="/auth" replace />
-        }
+        element={user ? <CourtEditor /> : <Navigate to="/auth" replace />}
       />
       <Route
         path="/library"

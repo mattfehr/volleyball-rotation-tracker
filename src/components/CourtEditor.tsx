@@ -16,7 +16,22 @@ function CourtEditor() {
   useEffect(() => {
     const loadFromCloud = async () => {
       const id = localStorage.getItem('rotation-id');
-      if (!id || !user) return;
+
+      if (!user) return;
+
+      if (!id) {
+        // No saved ID = start fresh
+        setRotationTitle("Untitled Rotation");
+        setRotations([
+          [
+            { id: uuid(), label: 'S', name: 'Alex', x: 650, y: 525, zone: 1 }
+          ],
+          [], [], [], [], []
+        ]);
+        setAnnotationStrokes(Array.from({ length: 6 }, () => []));
+        setCurrentRotation(0);
+        return;
+      }
 
       try {
         const set = await getRotationSetById(user.uid, id);
@@ -38,6 +53,7 @@ function CourtEditor() {
 
     loadFromCloud();
   }, [user]);
+
 
   const navigate = useNavigate();
 
