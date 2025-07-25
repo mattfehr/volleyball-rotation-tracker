@@ -22,7 +22,7 @@ export default function Library() {
   };
 
   return (
-    <div className="min-h-screen bg-green-800 text-white p-8">
+    <div className="w-screen min-h-screen bg-green-800 text-white p-8 flex flex-col items-center">
       {/* Header + Logout */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -50,7 +50,7 @@ export default function Library() {
       {sets.length === 0 ? (
         <p>No saved rotations yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl justify-items-center">
           {sets.map((set) => (
             <div
               key={set.id}

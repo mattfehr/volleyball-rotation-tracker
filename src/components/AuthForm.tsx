@@ -30,10 +30,10 @@ export default function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-green-700">
+    <div className="w-screen h-screen flex items-center justify-center bg-green-700">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded shadow-md w-80 space-y-4"
+        className="bg-white p-8 rounded shadow-md w-full max-w-md space-y-4"
       >
         <h2 className="text-xl font-bold text-center">
           {isRegistering ? "Register" : "Login"}
