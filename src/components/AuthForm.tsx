@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { setDoc, doc } from 'firebase/firestore';
 
 export default function AuthForm() {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -17,6 +18,9 @@ export default function AuthForm() {
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, 'users', auth.currentUser!.uid), {
+          username, // original casing preserved
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }

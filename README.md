@@ -125,5 +125,4 @@ users/
       }
 
 todo:
-{username}@
 all screen resizing
