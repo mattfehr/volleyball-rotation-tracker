@@ -11,6 +11,8 @@ export default function Library() {
   const navigate = useNavigate();
   const [sets, setSets] = useState<(RotationSet & { id: string })[]>([]);
 
+	const username = user?.email?.split('@')[0] || 'My';
+
   useEffect(() => {
     if (!user) return;
     getUserRotationSets(user.uid).then(setSets);
@@ -26,7 +28,7 @@ export default function Library() {
       {/* Header + Logout */}
       <div className="flex justify-between items-center mb-6">
 				<h1 className="text-3xl font-bold flex items-center gap-2">
-					📂 My Saved Rotations
+					📂 {username}'s Saved Rotations
 				</h1>
 				<div className="flex gap-3">
 					<button

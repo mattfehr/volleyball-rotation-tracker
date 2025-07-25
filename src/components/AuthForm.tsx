@@ -1,16 +1,18 @@
 import { useState } from "react";
-import {createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 
 export default function AuthForm() {
   const [isRegistering, setIsRegistering] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState(""); // renamed
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const email = `${username}@vbrt.com`; // generate fake email
 
     try {
       if (isRegistering) {
@@ -35,9 +37,9 @@ export default function AuthForm() {
 
         <input
           type="text"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           className="w-full border p-2 rounded"
           required
         />
@@ -69,7 +71,7 @@ export default function AuthForm() {
         >
           {isRegistering
             ? "Already have an account? Login"
-            : "Need an account? Register"}
+            : "Need an account? Register. Don't actually use your real password lol"}
         </button>
       </form>
     </div>

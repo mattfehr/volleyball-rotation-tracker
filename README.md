@@ -125,8 +125,5 @@ users/
       }
 
 todo:
-have a no draw button
 {username}@
 all screen resizing
-making duplicates on save instead of updating
-rotating forward on save
