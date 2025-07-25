@@ -47,8 +47,8 @@ function CourtEditor() {
         }
 
         setRotationTitle(set.title || 'Untitled');
-        setRotations(Object.values(set.players));
-        setAnnotationStrokes(Object.values(set.annotations));
+        setRotations(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.players[key] || []));
+        setAnnotationStrokes(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.annotations[key] || []));
         setCurrentRotation(0);
         setRotationId(id); // ✅ track the ID for later updates
         localStorage.removeItem('rotation-id');
