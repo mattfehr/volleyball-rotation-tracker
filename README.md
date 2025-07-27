@@ -20,8 +20,8 @@ Built with **React (Vite)** and powered by **Firebase** for user authentication 
 
 ## 🚀 Live Demo
 
-👉 [Website](https://volleyball-rotations-f1f4d.web.app)
-👉 [Video Demonstration](https://youtu.be/YApuQVzlr2E)
+- 👉 [Website](https://volleyball-rotations-f1f4d.web.app)
+- 👉 [Video Demonstration](https://youtu.be/YApuQVzlr2E)
 
 ---
 
