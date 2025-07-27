@@ -22,7 +22,7 @@ export default function Library() {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-green-800 text-white p-8 flex flex-col items-center">
+    <div className="min-h-screen w-screen bg-green-700 text-white p-8 flex flex-col items-center">
       {/* Header */}
       <div className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2 text-center md:text-left">
@@ -34,13 +34,13 @@ export default function Library() {
               localStorage.removeItem('rotation-id');
               navigate('/');
             }}
-            className="bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded font-semibold shadow"
+            className="bg-gray-100 hover:bg-gray-200 text-black px-4 py-2 rounded font-semibold shadow"
           >
             ➕ New
           </button>
           <button
             onClick={() => signOut(auth)}
-            className="bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded font-semibold shadow flex items-center gap-1"
+            className="bg-gray-100 hover:bg-gray-200 text-black px-4 py-2 rounded font-semibold shadow flex items-center gap-1"
           >
             🔒 Log Out
           </button>
