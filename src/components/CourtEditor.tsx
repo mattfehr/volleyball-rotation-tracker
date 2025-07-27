@@ -291,7 +291,7 @@ function CourtEditor() {
         {/* Center: Arrows + Tabs */}
         <div className="flex gap-2 items-center">
           <button
-            className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50 mr-16"
+            className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 mr-16"
             onClick={() => setCurrentRotation(Math.max(currentRotation - 1, 0))}
             disabled={currentRotation === 0}
           >
@@ -302,7 +302,7 @@ function CourtEditor() {
             <button
               key={i}
               className={`px-3 py-1 rounded font-medium transition ${
-                i === currentRotation ? 'bg-yellow-400 text-black' : 'bg-white text-black hover:bg-gray-100'
+                i === currentRotation ? 'bg-yellow-400 text-black' : 'bg-gray-100 hover:bg-gray-200 text-black'
               }`}
               onClick={() => setCurrentRotation(i)}
             >
@@ -311,7 +311,7 @@ function CourtEditor() {
           ))}
 
           <button
-            className="bg-white text-black px-3 py-1 rounded shadow disabled:opacity-50 ml-16"
+            className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 ml-16"
             onClick={() => setCurrentRotation(Math.min(currentRotation + 1, 5))}
             disabled={currentRotation === 5}
           >
@@ -377,7 +377,7 @@ function CourtEditor() {
                 ))}
               </select>
               <button
-                className="text-red-600 text-sm"
+                className="text-red-600 text-sm hover:underline"
                 onClick={() => removePlayer(player.id)}
               >
                 Remove
@@ -410,7 +410,7 @@ function CourtEditor() {
               <span className="text-sm">6-player rotation rules</span>
             </label>
             <button
-              className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded w-full font-semibold"
+              className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded w-full font-semibold"
               onClick={checkLegality}
               disabled={!rotationCheckEnabled}
             >
@@ -429,7 +429,7 @@ function CourtEditor() {
 
           <div className="bg-white p-4 rounded shadow">
             <button
-              className="bg-indigo-600 hover:bg-indigo-700 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
+              className="bg-gray-100 hover:bg-gray-200 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
               onClick={rotateFromPrevious}
             >
               🔁 Rotate From Previous Row
@@ -450,7 +450,7 @@ function CourtEditor() {
                     key={tool}
                     onClick={() => setCurrentTool(tool)}
                     className={`px-2 py-1 rounded text-sm border ${
-                      currentTool === tool ? 'bg-blue-500 text-black' : 'bg-gray-100'
+                      currentTool === tool ? 'bg-blue-200 text-black' : 'bg-gray-100 hover:bg-gray-200'
                     }`}
                   >
                     {label}
@@ -460,7 +460,7 @@ function CourtEditor() {
             </div>
             <button
               onClick={() => setStrokes([])}
-              className="mt-2 text-sm text-red-600"
+              className="mt-2 text-sm text-red-600 hover:underline"
             >
               🗑️ Clear
             </button>
@@ -469,7 +469,7 @@ function CourtEditor() {
           <div className="bg-white p-4 rounded shadow space-y-2">
             <button
               onClick={exportAllToPdf}
-              className="bg-purple-600 hover:bg-purple-700 text-black px-3 py-2 rounded w-full"
+              className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-2 rounded w-full"
             >
               📄 Export All Rotations as PDF
             </button>

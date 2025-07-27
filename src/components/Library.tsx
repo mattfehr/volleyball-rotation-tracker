@@ -78,7 +78,7 @@ export default function Library() {
                     await deleteRotationSet(user!.uid, set.id);
                     setSets(prev => prev.filter(r => r.id !== set.id));
                   }}
-                  className="bg-gray-200 hover:bg-gray-300 text-black px-3 py-1 rounded text-sm"
+                  className="bg-red-200 hover:bg-red-300 text-black px-3 py-1 rounded text-sm"
                 >
                   🗑
                 </button>
