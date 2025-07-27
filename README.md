@@ -1,128 +1,105 @@
-# React + TypeScript + Vite
+# 🏐 Volleyball Rotation Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An interactive web app for creating, visualizing, and managing 6-player volleyball rotations — complete with draggable players, legality checks, annotation tools, and PDF export.
 
-Currently, two official plugins are available:
+Built with **React (Vite)** and powered by **Firebase** for user authentication and cloud-synced rotation storage.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## ✨ Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- 🔄 **Six Rotation Editor** – Easily navigate between 6 saved rotations
+- 🖱️ **Draggable Players** – Set and customize positions and labels
+- 🚦 **Rotation Legality Checker** – Validate player positioning rules
+- 🧽 **Court Annotation Tools** – Draw, highlight, erase directly on the court
+- 💾 **Save to Cloud** – Securely store rotations per user via Firebase
+- 📄 **Export to PDF** – Download all six rotations in a single document
+- 🧑‍💻 **Username-based Auth** – Simple, no-real-email sign-up experience
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🚀 Live Demo
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+👉 [Website](https://volleyball-rotations-f1f4d.web.app)
+👉 [Video Demonstration](https://youtu.be/YApuQVzlr2E)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React + Vite + TypeScript + TailwindCSS
+- **Auth & Database**: Firebase Authentication + Firestore
+- **PDF Generation**: [html-to-image](https://github.com/bubkoo/html-to-image) + [jsPDF](https://github.com/parallax/jsPDF)
+- **Canvas Drawing**: Custom HTML5 canvas overlay per rotation
+
+---
+
+## 🔧 Local Development
+
+### 1. Clone the repo
+```bash
+git clone https://github.com/your-username/volleyball-rotation-tracker.git
+cd volleyball-rotation-tracker
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Install dependencies
+```bash
+npm install
 ```
 
-🧩 Database Structure (high-level)
-users
-id (UUID or unique string)
+### 3. Create a `.env` file (if needed)
+You’ll need Firebase project credentials. Add them to `.env` or hardcode into your `firebase.ts` for dev.
 
-username
+### 4. Start the app
+```bash
+npm run dev
+```
 
-passwordHash (never store raw passwords)
+---
 
-email (optional)
+## 🧪 Deployment (Firebase Hosting)
 
-rotations
-id (UUID)
+To deploy:
 
-userId (FK to users)
+```bash
+npm run build
+firebase deploy
+```
 
-title (e.g. “6-2 Serve Receive”)
+Make sure you've run `firebase init hosting` and selected the correct Firebase project.
 
-createdAt
+---
 
-updatedAt
+## 📁 Project Structure
 
-rotation_data
-rotationId (FK to rotations)
+```
+src/
+  ├─ components/
+  │   ├─ Court.tsx
+  │   ├─ CanvasOverlay.tsx
+  │   └─ AuthForm.tsx
+  ├─ pages/
+  │   └─ CourtEditor.tsx
+  ├─ contexts/
+  │   └─ AuthContext.tsx
+  ├─ lib/
+  │   └─ firestore.ts
+  ├─ models/
+  │   ├─ Player.ts
+  │   └─ Tool.ts (optional)
+```
 
-rotationIndex (0–5 for R1–R6)
+---
 
-players: list of {id, label, name, x, y, zone}
+## 🧠 Future Improvements
 
-annotations: list of strokes (as you already have)
+- Mobile layout / responsive design
+- Team mode or shared editing
+- Advanced filtering/search in the library
+- Custom player colors or jersey numbers
+- Real-time collaboration (via Firestore or WebSockets)
 
-✅ Current Local Feature Roadmap
-We can start with client-side saving/loading and later connect to a backend:
+## 🙋‍♂️ Author
 
-Export to JSON
-
-A .json file that includes all 6 rotations + annotations + optional title
-
-Import from JSON
-
-Load a previously saved rotation set
-
-Eventually: Connect to database
-
-Auth → User → Load their saved rotations
-
-Cloud save/load, editing, sharing
-
-users/
-  userID/
-    rotations/
-      rotationID: {
-        title,
-        players[],
-        annotations[],
-      }
-
-todo:
-all screen resizing
+**Matthew Fehr**  
+CS @ CSULB · [GitHub](https://github.com/mattfehr)
