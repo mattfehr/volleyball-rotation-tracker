@@ -276,7 +276,7 @@ function CourtEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-green-700 flex justify-center items-start p-6 flex-col">
+    <div className="min-h-screen w-full bg-green-700 flex flex-col items-center p-6 overflow-x-auto">
       {/* Rotation Navigation */}
       <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full max-w-screen-xl mb-4 px-6">
         {/* Left: Title or future controls */}
