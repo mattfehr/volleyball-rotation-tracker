@@ -22,39 +22,40 @@ export default function Library() {
   };
 
   return (
-    <div className="w-screen min-h-screen bg-green-800 text-white p-8 flex flex-col items-center">
-      {/* Header + Logout */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          📂 {username ?? "My"}'s Rotations
+    <div className="min-h-screen w-screen bg-green-800 text-white p-8 flex flex-col items-center">
+      {/* Header */}
+      <div className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-center md:text-left">
+          📁 {username ?? "My"}'s Rotations
         </h1>
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-4 md:mt-0">
           <button
             onClick={() => {
-              localStorage.removeItem('rotation-id'); // ⬅️ clear stale ID
+              localStorage.removeItem('rotation-id');
               navigate('/');
             }}
-            className="bg-yellow-400 hover:bg-yellow-500 text-black px-4 py-1.5 rounded font-semibold shadow ml-4"
+            className="bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded font-semibold shadow"
           >
             ➕ New
           </button>
           <button
             onClick={() => signOut(auth)}
-            className="bg-white hover:bg-gray-100 text-black px-4 py-1.5 rounded font-semibold shadow flex items-center gap-1"
+            className="bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded font-semibold shadow flex items-center gap-1"
           >
             🔒 Log Out
           </button>
         </div>
       </div>
 
+      {/* Saved Rotations */}
       {sets.length === 0 ? (
-        <p>No saved rotations yet.</p>
+        <p className="text-lg mt-8">No saved rotations yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl justify-items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl">
           {sets.map((set) => (
             <div
               key={set.id}
-              className="bg-white text-black p-4 rounded shadow hover:shadow-lg transition flex flex-col justify-between"
+              className="bg-white text-black p-4 rounded-xl shadow hover:shadow-lg transition flex flex-col justify-between w-full"
             >
               <div>
                 <h2 className="text-xl font-semibold mb-2">{set.title || "Untitled"}</h2>
@@ -66,7 +67,7 @@ export default function Library() {
               <div className="flex justify-between items-center gap-2">
                 <button
                   onClick={() => handleLoad(set)}
-                  className="bg-blue-500 hover:bg-blue-600 text-black px-2 py-1 rounded text-sm w-full"
+                  className="bg-gray-200 hover:bg-gray-300 text-black px-3 py-1 rounded text-sm w-full font-medium"
                 >
                   Load into Editor
                 </button>
@@ -77,7 +78,7 @@ export default function Library() {
                     await deleteRotationSet(user!.uid, set.id);
                     setSets(prev => prev.filter(r => r.id !== set.id));
                   }}
-                  className="bg-red-500 hover:bg-red-600 text-black px-2 py-1 rounded text-sm"
+                  className="bg-gray-200 hover:bg-gray-300 text-black px-3 py-1 rounded text-sm"
                 >
                   🗑
                 </button>
