@@ -94,10 +94,12 @@ src/
 ## 🧠 Future Improvements
 
 - Mobile layout / responsive design
+- Fix annotations for mobile (not clicking the mouse)
 - Team mode or shared editing
 - Advanced filtering/search in the library
 - Custom player colors or jersey numbers
 - Real-time collaboration (via Firestore or WebSockets)
+- More rotation rules for different numbers of players
 
 ## 🙋‍♂️ Author
 

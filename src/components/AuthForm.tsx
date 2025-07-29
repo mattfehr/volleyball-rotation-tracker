@@ -3,18 +3,21 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { auth, db } from "../firebase";
 import { setDoc, doc } from 'firebase/firestore';
 
+//component for the log in page
 export default function AuthForm() {
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);  //state for if registering or logging in
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);    //state for displaying errors
 
+  //function to handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    e.preventDefault();     //prevent page reloading
+    setError(null);         //clear previous error
 
-    const email = `${username}@vbrt.com`;
+    const email = `${username}@vbrt.com`; //create fake email using username for firebase auth
 
+    //if registering create user in firebase auth and save their username in Firestore under /users/{uid}
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password);

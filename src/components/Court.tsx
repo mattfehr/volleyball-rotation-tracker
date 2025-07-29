@@ -1,25 +1,21 @@
-import {
-  DndContext,
-  useDraggable,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import {DndContext,useDraggable, type DragEndEvent} from '@dnd-kit/core';
 import type { Player } from '../models/Player';
-import CanvasOverlay, { type Stroke } from './CanvasOverlay'; // NEW
+import CanvasOverlay, { type Stroke } from './CanvasOverlay';
 
-// properties for court
+//properties for court from court editor
 type Props = {
   players: Player[];
   setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
   violatingIds?: string[];
 
-  // NEW for annotations
   strokes: Stroke[];
   setStrokes: (strokes: Stroke[]) => void;
   currentTool: 'none' | 'pen' | 'highlight' | 'eraser';
 };
 
-// helper component for a draggable player
+//helper component for a draggable player
 function DraggablePlayer({
+  //destructuring properties
   player,
   isViolating,
 }: {
@@ -30,6 +26,7 @@ function DraggablePlayer({
     id: player.id,
   });
 
+  //use trasnform for live feedback
   const style = {
     transform: transform
       ? `translate(${transform.x + player.x}px, ${transform.y + player.y}px)`
@@ -52,14 +49,9 @@ function DraggablePlayer({
 }
 
 // main court component
-export default function Court({
-  players,
-  setPlayers,
-  violatingIds,
-  strokes,
-  setStrokes,
-  currentTool,
-}: Props) {
+export default function Court({players, setPlayers, violatingIds, strokes, setStrokes, currentTool}: Props) {
+  
+  //function to update player position after dragging
   const handleDragEnd = (event: DragEndEvent) => {
     const { delta, active } = event;
 

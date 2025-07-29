@@ -6,16 +6,20 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 
+//component for library page
 export default function Library() {
-  const { user, username } = useAuth();
-  const navigate = useNavigate();
+  //states to get currently logged in users and their saved rotation sets
+  const { user, username } = useAuth();                                     
   const [sets, setSets] = useState<(RotationSet & { id: string })[]>([]);
+  const navigate = useNavigate();
 
+  //listener for when the user is available then retrive their rotation sets and store them in the state
   useEffect(() => {
     if (!user) return;
     getUserRotationSets(user.uid).then(setSets);
   }, [user]);
 
+  //function to load the rotation into the court editor
   const handleLoad = (set: RotationSet & { id: string }) => {
     localStorage.setItem('rotation-id', set.id);
     navigate('/');

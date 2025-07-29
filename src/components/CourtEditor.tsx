@@ -11,21 +11,22 @@ import { useNavigate } from 'react-router-dom';
 import { setDoc, doc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
-
-
+//component for the court editor page
 function CourtEditor() {
-	const { user } = useAuth(); // Make sure this is at the top of your component
 
+  //track current user and rotation id being edited
+	const { user } = useAuth();
   const [rotationId, setRotationId] = useState<string | null>(null);
 
+  //on load check if rotation was selected from library, yes -> firestore, no -> fresh start
   useEffect(() => {
     const loadFromCloud = async () => {
-      const id = localStorage.getItem('rotation-id');
+      const id = localStorage.getItem('rotation-id'); //check if rotation-id was saved in library in local storage
 
       if (!user) return;
-
+      
+      //if no saved id, set up fresh
       if (!id) {
-        // No saved ID = start fresh
         setRotationTitle("Untitled Rotation");
         setRotations([
           [
@@ -39,18 +40,20 @@ function CourtEditor() {
         return;
       }
 
+      //if there is a saved id, load it from firestore
       try {
         const set = await getRotationSetById(user.uid, id);
         if (!set) {
           alert('❌ Failed to load rotation set.');
           return;
         }
-
+        
+        //update states with retrieved data
         setRotationTitle(set.title || 'Untitled');
         setRotations(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.players[key] || []));
         setAnnotationStrokes(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.annotations[key] || []));
         setCurrentRotation(0);
-        setRotationId(id); // ✅ track the ID for later updates
+        setRotationId(id); 
         localStorage.removeItem('rotation-id');
       } catch (err) {
         console.error('Failed to load from cloud:', err);
@@ -59,10 +62,11 @@ function CourtEditor() {
     };
 
     loadFromCloud();
-  }, [user]);
+  }, [user]); //run when user changes
 
   const navigate = useNavigate();
 
+  //use effect initial value fall backs
   const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
 
   const initialPlayers: Player[] = [
@@ -76,28 +80,31 @@ function CourtEditor() {
   const [currentRotation, setCurrentRotation] = useState(0);
   const players = rotations[currentRotation];
 
+  //custom set players hook to target only current rotation instead of full 2D player array
   const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
-    setRotations(prev => {
-      const updated = [...prev];
-      const current = prev[currentRotation];
-      const next =
+    setRotations(prev => {                        //takes a function that recieves previous state
+      const updated = [...prev];                  //copy
+      const current = prev[currentRotation];      //takes current rotation array
+      const next =                                //transforms array or replaces it
         typeof valueOrUpdater === 'function'
-          ? (valueOrUpdater as (prev: Player[]) => Player[])(current)
+          ? (valueOrUpdater as (prev: Player[]) => Player[])(current)     
           : valueOrUpdater;
-      updated[currentRotation] = next;
+      updated[currentRotation] = next;            //updates the 2d array with the new array
       return updated;
     });
   };
 
+  //states for rotation legality checker
   const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
   const [violatingIds, setViolatingIds] = useState<string[]>([]);
 
+  //states for annotations
   const [annotationStrokes, setAnnotationStrokes] = useState<Stroke[][]>(
     Array.from({ length: 6 }, () => [])
   );
   const strokes = annotationStrokes[currentRotation];
-  const setStrokes = (newStrokes: Stroke[]) => {
+  const setStrokes = (newStrokes: Stroke[]) => {  //custom setStrokes for targeting specific rotations like with players
     setAnnotationStrokes(prev => {
       const updated = [...prev];
       updated[currentRotation] = newStrokes;
@@ -107,8 +114,9 @@ function CourtEditor() {
 
   const [currentTool, setCurrentTool] = useState<'none' | 'pen' | 'highlight' | 'eraser'>('none');
 
-  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
-    setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));
+  //managing players in rotation
+  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {  //targetted field must be a valid property
+    setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));   //map to create new player array only updating targetted field
   };
 
   const addPlayer = () => {
@@ -126,26 +134,29 @@ function CourtEditor() {
   };
 
   const removePlayer = (id: string) => {
-    setPlayers(players.filter(p => p.id !== id));
+    setPlayers(players.filter(p => p.id !== id)); //filter to keep players whose idea does not match
   };
 
+  //function to copy and rotate players based on their previous zone
   const rotateFromPrevious = () => {
-    const locations = [[650, 525], [625, 100], [400, 100], [150, 100], [150, 525], [400, 525]];
-    const sourceIndex = (currentRotation + 5) % 6;
+    const locations = [[650, 525], [625, 100], [400, 100], [150, 100], [150, 525], [400, 525]]; //hard coded zone locations
+    const sourceIndex = (currentRotation + 5) % 6;    //get previous row number and players info
     const prevPlayers = rotations[sourceIndex];
 
+    //get the old zones and update them to their new ones
     const rotated = prevPlayers.map(p => {
       const oldZone = p.zone;
       const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
       let x = p.x;
       let y = p.y;
 
+      //if a zone was assigned go to the location, else stay
       if (typeof newZone === 'number') {
         x = locations[newZone - 1][0];
         y = locations[newZone - 1][1];
       }
 
-      return {
+      return {  //return the player object to the map list
         ...p,
         id: uuid(),
         zone: newZone,
@@ -154,13 +165,14 @@ function CourtEditor() {
       };
     });
 
-    setRotations(prev => {
+    setRotations(prev => {          //update the state
       const updated = [...prev];
       updated[currentRotation] = rotated;
       return updated;
     });
   };
 
+  //function to check for illegal overlapping
   const checkLegality = () => {
     if (players.length !== 6) {
       setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
@@ -168,6 +180,7 @@ function CourtEditor() {
       return;
     }
 
+    //check if every zone has a player with {zone : player}
     const zoneMap = new Map(players.map(p => [p.zone, p]));
     const requiredZones = [1, 2, 3, 4, 5, 6];
     if (!requiredZones.every(z => zoneMap.has(z))) {
@@ -176,7 +189,7 @@ function CourtEditor() {
       return;
     }
 
-    const z = (n: number) => zoneMap.get(n)!;
+    const z = (n: number) => zoneMap.get(n)!;     //! to show the get wont return undefined
     const name = (n: number) => `${z(n).name || "Unnamed"}`;
 
     const violations: string[] = [];
@@ -200,17 +213,17 @@ function CourtEditor() {
   };
 
   //PDF download
-  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);   //store a reference to each rotation container DOM
 
   const exportAllToPdf = async () => {
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [900, 900] });
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [900, 900] }); //match court sizw
 
     for (let i = 0; i < 6; i++) {
-      const node = exportRefs.current[i];
+      const node = exportRefs.current[i]; //get the DOM from each ref
       if (!node) continue;
 
       try {
-        const dataUrl = await toPng(node);
+        const dataUrl = await toPng(node);            //convert DOM to PNG
         if (i > 0) pdf.addPage();
         pdf.addImage(dataUrl, 'PNG', 0, 0, 900, 900);
       } catch (err) {
@@ -218,11 +231,11 @@ function CourtEditor() {
       }
     }
 
-    pdf.save('volleyball-rotations.pdf');
+    pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
   };
 
-  //save
-  const convertRotationArrayToObject = <T,>(arr: T[][]): Record<string, T[]> =>
+  //save to firestore
+  const convertRotationArrayToObject = <T,>(arr: T[][]): Record<string, T[]> =>	//helper for array -> object for firestore
     Object.fromEntries(arr.map((item, i) => [`R${i + 1}`, item]));
 
   const saveToCloud = async () => {
@@ -231,7 +244,7 @@ function CourtEditor() {
       return;
     }
 
-    // Sanitize individual player fields
+    //sanitize individual player fields
     const sanitizePlayers = (players: Player[]): Player[] =>
       players.map(p => ({
         id: p.id,
@@ -239,7 +252,7 @@ function CourtEditor() {
         name: p.name ?? '',
         x: p.x,
         y: p.y,
-        zone: p.zone ?? null, // Firestore allows null, not undefined
+        zone: p.zone ?? null, //firestore allows null, not undefined
       }));
 
     const sanitizedRotations = convertRotationArrayToObject(
@@ -255,18 +268,17 @@ function CourtEditor() {
       players: sanitizedRotations,
       annotations: sanitizedAnnotations,
       updatedAt: Timestamp.now(),
-      createdAt: Timestamp.now(), // Will be overwritten if updating
+      createdAt: Timestamp.now(),
     };
 
     try {
+			//if rotation id exists, then update the existing document
       if (rotationId) {
-        // ✅ Update existing document
         await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, { merge: true });
         alert(`✅ Updated "${title}"`);
-      } else {
-        // ➕ Create new document
+      } else { //if not, then create and add the document
         const docRef = await addDoc(collection(db, 'users', user.uid, 'rotations'), data);
-        setRotationId(docRef.id); // Track new ID
+        setRotationId(docRef.id);
         alert(`✅ Saved new rotation! ID: ${docRef.id}`);
       }
     } catch (error) {

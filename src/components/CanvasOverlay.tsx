@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 
 type Tool = 'none' | 'pen' | 'highlight' | 'eraser';
 
+//type to store the different strokes
 export type Stroke = {
   tool: Tool;
   color: string;
@@ -9,18 +10,20 @@ export type Stroke = {
   points: { x: number; y: number }[];
 };
 
+//component properties that come from court
 type Props = {
   strokes: Stroke[];
   setStrokes: (strokes: Stroke[]) => void;
   currentTool: Tool;
 };
 
+//canvas component to sit on top of court
 export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);                          //grabs canvas DOM element
+  const [isDrawing, setIsDrawing] = useState(false);                          //is the user currently holding down the mouse to drag
+  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);    //track active line being drawn
 
-  // Utility to draw a stroke
+  //function to draw a stroke
   const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     ctx.strokeStyle = stroke.color;
     ctx.lineWidth = stroke.width;
@@ -35,10 +38,10 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     });
     ctx.stroke();
 
-    ctx.globalAlpha = 1.0; // reset
+    ctx.globalAlpha = 1.0;
   };
 
-  // Redraw all strokes when strokes array changes
+  //listener to redraw all strokes when strokes changes
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -51,6 +54,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     strokes.forEach(stroke => drawStroke(ctx, stroke));
   }, [strokes]);
 
+  //function to calculate mouse position relative to canvas
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return {
@@ -59,6 +63,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     };
   };
 
+  //function to start drawing when mouse down
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (currentTool === 'none') return;
 
@@ -73,6 +78,7 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     setIsDrawing(true);
   };
 
+  //adds new points to the current stroke
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (currentTool == 'none' || !isDrawing || !currentStroke) return;
 
@@ -92,13 +98,14 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     }
   };
 
+  //function for when the stroke is done
   const endDrawing = () => {
     if (currentTool == 'none') return;
     if (currentStroke) {
       if (currentTool === 'eraser') {
         const eraserPoints = currentStroke.points;
 
-        // Remove any stroke where any point is near an eraser point
+        //remove any stroke where any point is near an eraser point
         const filtered = strokes.filter(stroke =>
           !stroke.points.some(sp =>
             eraserPoints.some(ep =>
@@ -109,10 +116,11 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
 
         setStrokes(filtered);
       } else {
-        setStrokes([...strokes, currentStroke]);
+        setStrokes([...strokes, currentStroke]);  //adds the stroke to the list if its not erasing
       }
     }
 
+    //resets states
     setIsDrawing(false);
     setCurrentStroke(null);
   };
