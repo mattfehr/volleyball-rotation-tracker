@@ -54,20 +54,31 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
     strokes.forEach(stroke => drawStroke(ctx, stroke));
   }, [strokes]);
 
-  //function to calculate mouse position relative to canvas
-  const getMousePos = (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+  //helper to work for both mouse and touch
+  const getCanvasPos = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+
+    if ('touches' in e) {
+      const touch = e.touches[0];
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    }
   };
 
   //function to start drawing when mouse down
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault(); // important for touch events
     if (currentTool === 'none') return;
 
-    const pos = getMousePos(e);
+    const pos = getCanvasPos(e);
     const stroke: Stroke = {
       tool: currentTool,
       color: currentTool === 'eraser' ? '#FFFFFF' : currentTool === 'highlight' ? 'yellow' : 'black',
@@ -79,10 +90,10 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
   };
 
   //adds new points to the current stroke
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (currentTool == 'none' || !isDrawing || !currentStroke) return;
 
-    const pos = getMousePos(e);
+    const pos = getCanvasPos(e);
     const updatedStroke = {
       ...currentStroke,
       points: [...currentStroke.points, pos],
@@ -133,6 +144,9 @@ export default function CanvasOverlay({ strokes, setStrokes, currentTool }: Prop
       onMouseMove={draw}
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing}
+      onTouchStart={startDrawing}
+      onTouchMove={draw}
+      onTouchEnd={endDrawing}
     />
   );
 }

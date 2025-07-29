@@ -94,7 +94,7 @@ src/
 ## 🧠 Future Improvements
 
 - Mobile layout / responsive design
-- Fix annotations for mobile (not clicking the mouse)
+- Fix annotations for mobile (scrolling issue)
 - Team mode or shared editing
 - Advanced filtering/search in the library
 - Custom player colors or jersey numbers
