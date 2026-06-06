@@ -2,12 +2,13 @@ import { db } from '../firebase';
 import { collection, addDoc, deleteDoc, getDocs, doc, getDoc, query, Timestamp } from 'firebase/firestore';
 import type { Player } from '../models/Player';
 import type { Stroke } from '../components/CanvasOverlay';
+import type { RotationViewKey } from './rotationViews';
 
 //each rotation is stored in firebase with these fields
 export type RotationSet = {
   title: string;
-  players: Record<string, Player[]>;      // "0: [Player, Player, ...]"
-  annotations: Record<string, Stroke[]>;
+  players: Partial<Record<RotationViewKey, Player[]>>;
+  annotations: Partial<Record<RotationViewKey, Stroke[]>>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
@@ -27,10 +28,10 @@ export async function saveRotationSet(userId: string, data: Omit<RotationSet, 'c
 export async function getUserRotationSets(userId: string): Promise<(RotationSet & { id: string })[]> {
   const q = query(collection(db, 'users', userId, 'rotations'));  //fire store query to get all documents in /users/{userId}/rotations
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({    //spread the doc out 
-    id: doc.id,
-    ...doc.data(),
-  })) as any;
+  return snapshot.docs.map((rotationDoc) => ({
+    id: rotationDoc.id,
+    ...(rotationDoc.data() as RotationSet),
+  }));
 }
 
 //function to get a particulat rotation set

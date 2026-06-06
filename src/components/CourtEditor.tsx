@@ -1,122 +1,137 @@
-import { useState, useRef, useEffect } from 'react';
-import type { Player } from '../models/Player';
-import Court from './Court';
+import { useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
-import type { Stroke } from './CanvasOverlay';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
+import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import type { Player } from '../models/Player';
+import Court from './Court';
+import type { Stroke } from './CanvasOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { getRotationSetById } from '../lib/firestore';
-import { useNavigate } from 'react-router-dom';
-import { setDoc, doc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import {
+  RECEIVE_VIEW_KEYS,
+  ROTATION_VIEW_KEYS,
+  SERVE_VIEW_KEYS,
+  createRotationViewRecord,
+  getPreviousRotationViewKey,
+  getRotationNumber,
+  type RotationViewKey,
+} from '../lib/rotationViews';
 
-//component for the court editor page
+const ZONE_LOCATIONS: [number, number][] = [
+  [650, 525],
+  [625, 100],
+  [400, 100],
+  [150, 100],
+  [150, 525],
+  [400, 525],
+];
+
+const createSamplePlayer = (): Player => ({
+  id: uuid(),
+  label: 'S',
+  name: 'Alex',
+  x: 650,
+  y: 525,
+  zone: 1,
+});
+
+const createInitialRotations = () =>
+  createRotationViewRecord<Player[]>((viewKey) => (viewKey === 'R1' ? [createSamplePlayer()] : []));
+
+const createInitialAnnotations = () => createRotationViewRecord<Stroke[]>(() => []);
+
+const normalizeViewData = <T,>(stored?: Partial<Record<RotationViewKey, T[]>>) =>
+  createRotationViewRecord<T[]>((viewKey) => stored?.[viewKey] ?? []);
+
 function CourtEditor() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  //track current user and rotation id being edited
-	const { user } = useAuth();
   const [rotationId, setRotationId] = useState<string | null>(null);
+  const [rotationTitle, setRotationTitle] = useState('Untitled Rotation');
+  const [rotations, setRotations] = useState<Record<RotationViewKey, Player[]>>(createInitialRotations);
+  const [annotationStrokes, setAnnotationStrokes] =
+    useState<Record<RotationViewKey, Stroke[]>>(createInitialAnnotations);
+  const [currentView, setCurrentView] = useState<RotationViewKey>('R1');
+  const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
+  const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [violatingIds, setViolatingIds] = useState<string[]>([]);
+  const [currentTool, setCurrentTool] = useState<'none' | 'pen' | 'highlight' | 'eraser'>('none');
 
-  //on load check if rotation was selected from library, yes -> firestore, no -> fresh start
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const currentViewIndex = ROTATION_VIEW_KEYS.indexOf(currentView);
+  const players = rotations[currentView];
+  const strokes = annotationStrokes[currentView];
+
+  const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
+    setRotations((prev) => {
+      const currentPlayers = prev[currentView];
+      const nextPlayers =
+        typeof valueOrUpdater === 'function'
+          ? (valueOrUpdater as (currentPlayers: Player[]) => Player[])(currentPlayers)
+          : valueOrUpdater;
+
+      return {
+        ...prev,
+        [currentView]: nextPlayers,
+      };
+    });
+  };
+
+  const setStrokes = (newStrokes: Stroke[]) => {
+    setAnnotationStrokes((prev) => ({
+      ...prev,
+      [currentView]: newStrokes,
+    }));
+  };
+
   useEffect(() => {
     const loadFromCloud = async () => {
-      const id = localStorage.getItem('rotation-id'); //check if rotation-id was saved in library in local storage
+      const id = localStorage.getItem('rotation-id');
 
       if (!user) return;
-      
-      //if no saved id, set up fresh
+
       if (!id) {
-        setRotationTitle("Untitled Rotation");
-        setRotations([
-          [
-            { id: uuid(), label: 'S', name: 'Alex', x: 650, y: 525, zone: 1 }
-          ],
-          [], [], [], [], []
-        ]);
-        setAnnotationStrokes(Array.from({ length: 6 }, () => []));
-        setCurrentRotation(0);
-        setRotationId(null); // ✅ explicitly clear
+        setRotationTitle('Untitled Rotation');
+        setRotations(createInitialRotations());
+        setAnnotationStrokes(createInitialAnnotations());
+        setCurrentView('R1');
+        setRotationId(null);
         return;
       }
 
-      //if there is a saved id, load it from firestore
       try {
         const set = await getRotationSetById(user.uid, id);
         if (!set) {
-          alert('❌ Failed to load rotation set.');
+          alert('Failed to load rotation set.');
           return;
         }
-        
-        //update states with retrieved data
+
         setRotationTitle(set.title || 'Untitled');
-        setRotations(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.players[key] || []));
-        setAnnotationStrokes(['R1', 'R2', 'R3', 'R4', 'R5', 'R6'].map(key => set.annotations[key] || []));
-        setCurrentRotation(0);
-        setRotationId(id); 
+        setRotations(normalizeViewData(set.players));
+        setAnnotationStrokes(normalizeViewData(set.annotations));
+        setCurrentView('R1');
+        setRotationId(id);
         localStorage.removeItem('rotation-id');
-      } catch (err) {
-        console.error('Failed to load from cloud:', err);
-        alert('❌ Error loading rotation set.');
+      } catch (error) {
+        console.error('Failed to load from cloud:', error);
+        alert('Error loading rotation set.');
       }
     };
 
     loadFromCloud();
-  }, [user]); //run when user changes
+  }, [user]);
 
-  const navigate = useNavigate();
+  useEffect(() => {
+    setCheckResult(null);
+    setViolatingIds([]);
+  }, [currentView]);
 
-  //use effect initial value fall backs
-  const [rotationTitle, setRotationTitle] = useState("Untitled Rotation");
-
-  const initialPlayers: Player[] = [
-    { id: uuid(), label: 'S', name: 'Alex', x: 650, y: 525, zone: 1 },
-  ];
-
-  const [rotations, setRotations] = useState<Player[][]>(
-    Array.from({ length: 6 }, (_, i) => (i === 0 ? initialPlayers : []))
-  );
-
-  const [currentRotation, setCurrentRotation] = useState(0);
-  const players = rotations[currentRotation];
-
-  //custom set players hook to target only current rotation instead of full 2D player array
-  const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
-    setRotations(prev => {                        //takes a function that recieves previous state
-      const updated = [...prev];                  //copy
-      const current = prev[currentRotation];      //takes current rotation array
-      const next =                                //transforms array or replaces it
-        typeof valueOrUpdater === 'function'
-          ? (valueOrUpdater as (prev: Player[]) => Player[])(current)     
-          : valueOrUpdater;
-      updated[currentRotation] = next;            //updates the 2d array with the new array
-      return updated;
-    });
-  };
-
-  //states for rotation legality checker
-  const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
-  const [checkResult, setCheckResult] = useState<string | null>(null);
-  const [violatingIds, setViolatingIds] = useState<string[]>([]);
-
-  //states for annotations
-  const [annotationStrokes, setAnnotationStrokes] = useState<Stroke[][]>(
-    Array.from({ length: 6 }, () => [])
-  );
-  const strokes = annotationStrokes[currentRotation];
-  const setStrokes = (newStrokes: Stroke[]) => {  //custom setStrokes for targeting specific rotations like with players
-    setAnnotationStrokes(prev => {
-      const updated = [...prev];
-      updated[currentRotation] = newStrokes;
-      return updated;
-    });
-  };
-
-  const [currentTool, setCurrentTool] = useState<'none' | 'pen' | 'highlight' | 'eraser'>('none');
-
-  //managing players in rotation
-  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {  //targetted field must be a valid property
-    setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));   //map to create new player array only updating targetted field
+  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
+    setPlayers(players.map((player) => (player.id === id ? { ...player, [field]: value } : player)));
   };
 
   const addPlayer = () => {
@@ -134,30 +149,26 @@ function CourtEditor() {
   };
 
   const removePlayer = (id: string) => {
-    setPlayers(players.filter(p => p.id !== id)); //filter to keep players whose idea does not match
+    setPlayers(players.filter((player) => player.id !== id));
   };
 
-  //function to copy and rotate players based on their previous zone
   const rotateFromPrevious = () => {
-    const locations = [[650, 525], [625, 100], [400, 100], [150, 100], [150, 525], [400, 525]]; //hard coded zone locations
-    const sourceIndex = (currentRotation + 5) % 6;    //get previous row number and players info
-    const prevPlayers = rotations[sourceIndex];
+    const sourceView = getPreviousRotationViewKey(currentView);
+    const previousPlayers = rotations[sourceView];
 
-    //get the old zones and update them to their new ones
-    const rotated = prevPlayers.map(p => {
-      const oldZone = p.zone;
+    const rotatedPlayers = previousPlayers.map((player) => {
+      const oldZone = player.zone;
       const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
-      let x = p.x;
-      let y = p.y;
+      let x = player.x;
+      let y = player.y;
 
-      //if a zone was assigned go to the location, else stay
       if (typeof newZone === 'number') {
-        x = locations[newZone - 1][0];
-        y = locations[newZone - 1][1];
+        x = ZONE_LOCATIONS[newZone - 1][0];
+        y = ZONE_LOCATIONS[newZone - 1][1];
       }
 
-      return {  //return the player object to the map list
-        ...p,
+      return {
+        ...player,
         id: uuid(),
         zone: newZone,
         x,
@@ -165,194 +176,222 @@ function CourtEditor() {
       };
     });
 
-    setRotations(prev => {          //update the state
-      const updated = [...prev];
-      updated[currentRotation] = rotated;
-      return updated;
-    });
+    setRotations((prev) => ({
+      ...prev,
+      [currentView]: rotatedPlayers,
+    }));
   };
 
-  //function to check for illegal overlapping
   const checkLegality = () => {
     if (players.length !== 6) {
-      setCheckResult("❌ Must have exactly 6 players assigned to zones 1–6.");
+      setCheckResult('Must have exactly 6 players assigned to zones 1-6.');
       setViolatingIds([]);
       return;
     }
 
-    //check if every zone has a player with {zone : player}
-    const zoneMap = new Map(players.map(p => [p.zone, p]));
+    const zoneMap = new Map(players.map((player) => [player.zone, player]));
     const requiredZones = [1, 2, 3, 4, 5, 6];
-    if (!requiredZones.every(z => zoneMap.has(z))) {
-      setCheckResult("❌ All zones 1–6 must be assigned.");
+    if (!requiredZones.every((zone) => zoneMap.has(zone))) {
+      setCheckResult('All zones 1-6 must be assigned.');
       setViolatingIds([]);
       return;
     }
 
-    const z = (n: number) => zoneMap.get(n)!;     //! to show the get wont return undefined
-    const name = (n: number) => `${z(n).name || "Unnamed"}`;
+    const zonePlayer = (zone: number) => zoneMap.get(zone)!;
+    const name = (zone: number) => zonePlayer(zone).name || 'Unnamed';
 
     const violations: string[] = [];
     const violators = new Set<string>();
 
-    if (z(1).y < z(2).y) violations.push(`${name(1)} must be behind ${name(2)}`), violators.add(z(1).id).add(z(2).id);
-    if (z(6).y < z(3).y) violations.push(`${name(6)} must be behind ${name(3)}`), violators.add(z(6).id).add(z(3).id);
-    if (z(5).y < z(4).y) violations.push(`${name(5)} must be behind ${name(4)}`), violators.add(z(5).id).add(z(4).id);
+    if (zonePlayer(1).y < zonePlayer(2).y) {
+      violations.push(`${name(1)} must be behind ${name(2)}`);
+      violators.add(zonePlayer(1).id);
+      violators.add(zonePlayer(2).id);
+    }
+    if (zonePlayer(6).y < zonePlayer(3).y) {
+      violations.push(`${name(6)} must be behind ${name(3)}`);
+      violators.add(zonePlayer(6).id);
+      violators.add(zonePlayer(3).id);
+    }
+    if (zonePlayer(5).y < zonePlayer(4).y) {
+      violations.push(`${name(5)} must be behind ${name(4)}`);
+      violators.add(zonePlayer(5).id);
+      violators.add(zonePlayer(4).id);
+    }
 
-    if (z(2).x < z(3).x) violations.push(`${name(2)} must be to the right of ${name(3)}`), violators.add(z(2).id).add(z(3).id);
-    if (z(3).x < z(4).x) violations.push(`${name(3)} must be to the right of ${name(4)}`), violators.add(z(3).id).add(z(4).id);
-    if (z(1).x < z(6).x) violations.push(`${name(1)} must be to the right of ${name(6)}`), violators.add(z(1).id).add(z(6).id);
-    if (z(6).x < z(5).x) violations.push(`${name(6)} must be to the right of ${name(5)}`), violators.add(z(6).id).add(z(5).id);
+    if (zonePlayer(2).x < zonePlayer(3).x) {
+      violations.push(`${name(2)} must be to the right of ${name(3)}`);
+      violators.add(zonePlayer(2).id);
+      violators.add(zonePlayer(3).id);
+    }
+    if (zonePlayer(3).x < zonePlayer(4).x) {
+      violations.push(`${name(3)} must be to the right of ${name(4)}`);
+      violators.add(zonePlayer(3).id);
+      violators.add(zonePlayer(4).id);
+    }
+    if (zonePlayer(1).x < zonePlayer(6).x) {
+      violations.push(`${name(1)} must be to the right of ${name(6)}`);
+      violators.add(zonePlayer(1).id);
+      violators.add(zonePlayer(6).id);
+    }
+    if (zonePlayer(6).x < zonePlayer(5).x) {
+      violations.push(`${name(6)} must be to the right of ${name(5)}`);
+      violators.add(zonePlayer(6).id);
+      violators.add(zonePlayer(5).id);
+    }
 
     setViolatingIds(Array.from(violators));
     setCheckResult(
-      violations.length === 0
-        ? "✅ Rotation is legal!"
-        : "❌ Illegal rotation:\n" + violations.join(";\n")
+      violations.length === 0 ? 'Rotation is legal!' : `Illegal rotation:\n${violations.join(';\n')}`
     );
   };
 
-  //PDF download
-  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);   //store a reference to each rotation container DOM
-
   const exportAllToPdf = async () => {
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [900, 900] }); //match court sizw
+    const pageWidth = 940;
+    const pageHeight = 1920;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pageWidth, pageHeight] });
 
-    for (let i = 0; i < 6; i++) {
-      const node = exportRefs.current[i]; //get the DOM from each ref
+    for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i += 1) {
+      const node = exportRefs.current[i];
       if (!node) continue;
 
       try {
-        const dataUrl = await toPng(node);            //convert DOM to PNG
+        const dataUrl = await toPng(node);
         if (i > 0) pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 0, 0, 900, 900);
-      } catch (err) {
-        console.error(`Failed to export rotation ${i + 1}:`, err);
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+      } catch (error) {
+        console.error(`Failed to export rotation ${i + 1}:`, error);
       }
     }
 
     pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
   };
 
-  //save to firestore
-  const convertRotationArrayToObject = <T,>(arr: T[][]): Record<string, T[]> =>	//helper for array -> object for firestore
-    Object.fromEntries(arr.map((item, i) => [`R${i + 1}`, item]));
-
   const saveToCloud = async () => {
     if (!user) {
-      alert("❌ You must be logged in to save.");
+      alert('You must be logged in to save.');
       return;
     }
 
-    //sanitize individual player fields
-    const sanitizePlayers = (players: Player[]): Player[] =>
-      players.map(p => ({
-        id: p.id,
-        label: p.label ?? '',
-        name: p.name ?? '',
-        x: p.x,
-        y: p.y,
-        zone: p.zone ?? null, //firestore allows null, not undefined
+    const sanitizePlayers = (viewPlayers: Player[]): Player[] =>
+      viewPlayers.map((player) => ({
+        id: player.id,
+        label: player.label ?? '',
+        name: player.name ?? '',
+        x: player.x,
+        y: player.y,
+        zone: player.zone ?? null,
       }));
 
-    const sanitizedRotations = convertRotationArrayToObject(
-      rotations.map(sanitizePlayers)
+    const sanitizedRotations = createRotationViewRecord<Player[]>((viewKey) =>
+      sanitizePlayers(rotations[viewKey])
     );
-
-    const sanitizedAnnotations = convertRotationArrayToObject(annotationStrokes);
-
-    const title = rotationTitle?.trim() || "Untitled";
-
+    const sanitizedAnnotations = createRotationViewRecord<Stroke[]>((viewKey) => annotationStrokes[viewKey]);
+    const title = rotationTitle.trim() || 'Untitled';
     const data = {
       title,
       players: sanitizedRotations,
       annotations: sanitizedAnnotations,
       updatedAt: Timestamp.now(),
-      createdAt: Timestamp.now(),
     };
 
     try {
-			//if rotation id exists, then update the existing document
       if (rotationId) {
         await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, { merge: true });
-        alert(`✅ Updated "${title}"`);
-      } else { //if not, then create and add the document
-        const docRef = await addDoc(collection(db, 'users', user.uid, 'rotations'), data);
+        alert(`Updated "${title}"`);
+      } else {
+        const docRef = await addDoc(collection(db, 'users', user.uid, 'rotations'), {
+          ...data,
+          createdAt: Timestamp.now(),
+        });
         setRotationId(docRef.id);
-        alert(`✅ Saved new rotation! ID: ${docRef.id}`);
+        alert(`Saved new rotation! ID: ${docRef.id}`);
       }
     } catch (error) {
       console.error(error);
-      alert("❌ Failed to save to cloud.");
+      alert('Failed to save to cloud.');
     }
   };
 
+  const exportNoopSetPlayers: React.Dispatch<React.SetStateAction<Player[]>> = () => {};
+  const renderViewButton = (viewKey: RotationViewKey) => (
+    <button
+      key={viewKey}
+      className={`min-w-12 px-3 py-1 rounded font-medium transition ${
+        viewKey === currentView ? 'bg-yellow-400 text-black' : 'bg-gray-100 hover:bg-gray-200 text-black'
+      }`}
+      onClick={() => setCurrentView(viewKey)}
+    >
+      {viewKey}
+    </button>
+  );
+
   return (
     <div className="min-h-screen w-full bg-green-700 flex flex-col items-center p-6 overflow-x-auto">
-      {/* Rotation Navigation */}
-      <div className="flex flex-col sm:flex-row sm:justify-between items-center w-full max-w-screen-xl mb-4 px-6">
-        {/* Left: Title or future controls */}
-        <input
-          type="text"
-          value={rotationTitle}
-          onChange={(e) => setRotationTitle(e.target.value)}
-          placeholder="Untitled Rotation"
-          className="inline-flex bg-transparent text-white font-semibold text-lg outline-none border-b border-white focus:border-yellow-400 px-1 w-fit max-w-[180px]"
-        />
+      <div className="w-full max-w-screen-xl mb-4 px-6">
+        <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_220px] xl:items-start">
+          <div className="flex justify-start">
+            <input
+              type="text"
+              value={rotationTitle}
+              onChange={(event) => setRotationTitle(event.target.value)}
+              placeholder="Untitled Rotation"
+              className="inline-flex bg-transparent text-white font-semibold text-lg outline-none border-b border-white focus:border-yellow-400 px-1 w-fit max-w-[180px]"
+            />
+          </div>
 
-        {/* Center: Arrows + Tabs */}
-        <div className="flex gap-2 items-center">
-          <button
-            className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 mr-16"
-            onClick={() => setCurrentRotation(Math.max(currentRotation - 1, 0))}
-            disabled={currentRotation === 0}
-          >
-            ← Prev
-          </button>
+          <div className="flex justify-center">
+            <div className="flex items-center gap-3 max-w-full overflow-x-auto py-1">
+              <button
+                className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 shrink-0"
+                onClick={() => setCurrentView(ROTATION_VIEW_KEYS[Math.max(currentViewIndex - 1, 0)])}
+                disabled={currentViewIndex === 0}
+              >
+                ← Prev
+              </button>
 
-          {[...Array(6)].map((_, i) => (
+              <div className="flex flex-col gap-2 min-w-max items-center">
+                <div className="flex gap-2">
+                  {SERVE_VIEW_KEYS.map(renderViewButton)}
+                </div>
+                <div className="flex gap-2 pl-6">
+                  {RECEIVE_VIEW_KEYS.map(renderViewButton)}
+                </div>
+              </div>
+
+              <button
+                className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 shrink-0"
+                onClick={() =>
+                  setCurrentView(ROTATION_VIEW_KEYS[Math.min(currentViewIndex + 1, ROTATION_VIEW_KEYS.length - 1)])
+                }
+                disabled={currentViewIndex === ROTATION_VIEW_KEYS.length - 1}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-start gap-2 xl:justify-end">
             <button
-              key={i}
-              className={`px-3 py-1 rounded font-medium transition ${
-                i === currentRotation ? 'bg-yellow-400 text-black' : 'bg-gray-100 hover:bg-gray-200 text-black'
-              }`}
-              onClick={() => setCurrentRotation(i)}
+              onClick={saveToCloud}
+              className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
             >
-              R{i + 1}
+              💾 Save
             </button>
-          ))}
 
-          <button
-            className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 ml-16"
-            onClick={() => setCurrentRotation(Math.min(currentRotation + 1, 5))}
-            disabled={currentRotation === 5}
-          >
-            Next →
-          </button>
-        </div>
-
-        {/* Right: reserved for future actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={saveToCloud}
-            className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
-          >
-            💾 Save
-          </button>
-
-          <button
-            onClick={() => navigate('/library')}
-            className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
-          >
-            🔙 Exit
-          </button>
+            <button
+              onClick={() => navigate('/library')}
+              className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
+            >
+              🔙 Exit
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Player Section */}
       <div className="flex gap-6 w-full max-w-screen-xl px-6 items-start">
         <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
-          <h2 className="text-xl font-bold">Players (R{currentRotation + 1})</h2>
+          <h2 className="text-xl font-bold">Players ({currentView})</h2>
           <button
             className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
             onClick={addPlayer}
@@ -366,26 +405,28 @@ function CourtEditor() {
                 className="w-full border p-1"
                 placeholder="Position"
                 value={player.label}
-                onChange={(e) => updatePlayer(player.id, 'label', e.target.value)}
+                onChange={(event) => updatePlayer(player.id, 'label', event.target.value)}
               />
               <input
                 type="text"
                 className="w-full border p-1"
                 placeholder="Name"
                 value={player.name}
-                onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
+                onChange={(event) => updatePlayer(player.id, 'name', event.target.value)}
               />
               <select
                 className="w-full border p-1"
                 value={player.zone ?? ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value));
+                onChange={(event) => {
+                  const value = event.target.value;
+                  updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value, 10));
                 }}
               >
-                <option value="">Zone (1–6)</option>
-                {[1, 2, 3, 4, 5, 6].map((z) => (
-                  <option key={z} value={z}>{z}</option>
+                <option value="">Zone (1-6)</option>
+                {[1, 2, 3, 4, 5, 6].map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
                 ))}
               </select>
               <button
@@ -397,8 +438,7 @@ function CourtEditor() {
             </div>
           ))}
         </div>
-        
-        {/* Court */}
+
         <div style={{ width: '900px', height: '900px' }} className="shrink-0">
           <Court
             players={players}
@@ -409,15 +449,14 @@ function CourtEditor() {
             currentTool={currentTool}
           />
         </div>
-        
-        {/* Right Panel */}
+
         <div className="w-64 space-y-4">
           <div className="bg-white p-4 rounded shadow space-y-4 h-fit">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={rotationCheckEnabled}
-                onChange={(e) => setRotationCheckEnabled(e.target.checked)}
+                onChange={(event) => setRotationCheckEnabled(event.target.checked)}
               />
               <span className="text-sm">6-player rotation rules</span>
             </label>
@@ -451,12 +490,16 @@ function CourtEditor() {
           <div className="bg-white p-4 rounded shadow space-y-2">
             <p className="font-semibold text-sm">Annotation Tool</p>
             <div className="flex gap-2 flex-wrap">
-              {(['none', 'pen', 'highlight', 'eraser'] as const).map(tool => {
+              {(['none', 'pen', 'highlight', 'eraser'] as const).map((tool) => {
                 const label =
-                  tool === 'none' ? '🚫 None' :
-                  tool === 'pen' ? '✏️ Pen' :
-                  tool === 'highlight' ? '🖌️ Highlight' :
-                  tool === 'eraser' ? '🧽 Erase' : tool;
+                  tool === 'none'
+                    ? '🚫 None'
+                    : tool === 'pen'
+                      ? '✏️ Pen'
+                      : tool === 'highlight'
+                        ? '🖍️ Highlight'
+                        : '🧽 Erase';
+
                 return (
                   <button
                     key={tool}
@@ -470,10 +513,7 @@ function CourtEditor() {
                 );
               })}
             </div>
-            <button
-              onClick={() => setStrokes([])}
-              className="mt-2 text-sm text-red-600 hover:underline"
-            >
+            <button onClick={() => setStrokes([])} className="mt-2 text-sm text-red-600 hover:underline">
               🗑️ Clear
             </button>
           </div>
@@ -490,24 +530,47 @@ function CourtEditor() {
       </div>
 
       <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        {rotations.map((players, i) => (
-          <div
-            key={i}
-            ref={(el) => { exportRefs.current[i] = el; }}
-            style={{ width: 900, height: 900 }}
-          >
-            <div style={{ width: '900px', height: '900px' }} className="shrink-0">
-              <Court
-                players={players}
-                setPlayers={setPlayers}
-                violatingIds={[]}
-                strokes={annotationStrokes[i]}
-                setStrokes={() => {}}
-                currentTool="pen"
-              />
+        {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
+          const serveView = `S${getRotationNumber(receiveView)}` as RotationViewKey;
+
+          return (
+            <div
+              key={receiveView}
+              ref={(element) => {
+                exportRefs.current[index] = element;
+              }}
+              style={{
+                width: 940,
+                height: 1920,
+                backgroundColor: '#15803d',
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+              }}
+            >
+              <div style={{ color: '#ffffff', fontSize: 28, fontWeight: 700 }}>
+                {rotationTitle || 'Untitled Rotation'} - {receiveView} / {serveView}
+              </div>
+
+              {[receiveView, serveView].map((viewKey) => (
+                <div key={viewKey} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 600 }}>{viewKey}</div>
+                  <div style={{ width: '900px', height: '900px' }} className="shrink-0">
+                    <Court
+                      players={rotations[viewKey]}
+                      setPlayers={exportNoopSetPlayers}
+                      violatingIds={[]}
+                      strokes={annotationStrokes[viewKey]}
+                      setStrokes={() => {}}
+                      currentTool="none"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
