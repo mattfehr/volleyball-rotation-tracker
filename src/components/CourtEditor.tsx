@@ -22,7 +22,7 @@ import {
 
 const ZONE_LOCATIONS: [number, number][] = [
   [650, 525],
-  [625, 100],
+  [650, 100],
   [400, 100],
   [150, 100],
   [150, 525],
@@ -65,6 +65,10 @@ function CourtEditor() {
   const currentViewIndex = ROTATION_VIEW_KEYS.indexOf(currentView);
   const players = rotations[currentView];
   const strokes = annotationStrokes[currentView];
+  const isReceiveView = currentView.startsWith('R');
+  const oppositeView = `${isReceiveView ? 'S' : 'R'}${getRotationNumber(currentView)}` as RotationViewKey;
+  const hasOppositePlayers = rotations[oppositeView].length > 0;
+  const copyButtonLabel = isReceiveView ? '📥 Copy From Serve' : '📥 Copy From Receive';
 
   const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
     setRotations((prev) => {
@@ -180,6 +184,33 @@ function CourtEditor() {
       ...prev,
       [currentView]: rotatedPlayers,
     }));
+  };
+
+  const copyFromOppositeTab = () => {
+    if (!hasOppositePlayers) return;
+
+    const copiedPlayers = rotations[oppositeView].map((player) => {
+      const zone = typeof player.zone === 'number' ? player.zone : undefined;
+      const [x, y] = zone ? ZONE_LOCATIONS[zone - 1] : [player.x, player.y];
+
+      return {
+        ...player,
+        id: uuid(),
+        x,
+        y,
+      };
+    });
+
+    setRotations((prev) => ({
+      ...prev,
+      [currentView]: copiedPlayers,
+    }));
+    setAnnotationStrokes((prev) => ({
+      ...prev,
+      [currentView]: [],
+    }));
+    setCheckResult(null);
+    setViolatingIds([]);
   };
 
   const checkLegality = () => {
@@ -478,12 +509,19 @@ function CourtEditor() {
             )}
           </div>
 
-          <div className="bg-white p-4 rounded shadow">
+          <div className="bg-white p-4 rounded shadow space-y-3">
             <button
               className="bg-gray-100 hover:bg-gray-200 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
               onClick={rotateFromPrevious}
             >
               🔁 Rotate From Previous Row
+            </button>
+            <button
+              className="bg-gray-100 hover:bg-gray-200 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={copyFromOppositeTab}
+              disabled={!hasOppositePlayers}
+            >
+              {copyButtonLabel}
             </button>
           </div>
 
