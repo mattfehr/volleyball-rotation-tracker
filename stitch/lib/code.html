@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tactical Library - VolleyTactics Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#fc820c",
+                        "surface-tint": "#3b6934",
+                        "primary-fixed-dim": "#a1d494",
+                        "primary-fixed": "#bcf0ae",
+                        "secondary-fixed": "#ffdcc6",
+                        "on-secondary-fixed-variant": "#723600",
+                        "on-secondary-fixed": "#311300",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "primary": "#154212",
+                        "court-green": "#2D5A27",
+                        "secondary-fixed-dim": "#ffb786",
+                        "on-surface-variant": "#42493e",
+                        "on-primary-container": "#9dd090",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "success-green": "#22C55E",
+                        "text-main": "#0F172A",
+                        "inverse-primary": "#a1d494",
+                        "on-surface": "#0b1c30",
+                        "tertiary-fixed-dim": "#ffb0cc",
+                        "on-tertiary-fixed-variant": "#71314c",
+                        "secondary": "#964900",
+                        "background": "#f8f9ff",
+                        "tertiary-fixed": "#ffd9e4",
+                        "on-background": "#0b1c30",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#2d5a27",
+                        "on-tertiary-fixed": "#3b0520",
+                        "surface-base": "#F8FAFC",
+                        "on-error": "#ffffff",
+                        "surface": "#f8f9ff",
+                        "on-primary-fixed-variant": "#23501e",
+                        "error-red": "#EF4444",
+                        "athletic-orange": "#F57C00",
+                        "surface-bright": "#f8f9ff",
+                        "surface-container-high": "#dce9ff",
+                        "tertiary": "#60233e",
+                        "on-primary-fixed": "#002201",
+                        "inverse-surface": "#213145",
+                        "on-tertiary-container": "#ffaac8",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c2c9bb",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-card": "#FFFFFF",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#5e2c00",
+                        "outline": "#72796e",
+                        "surface-container-low": "#eff4ff",
+                        "surface-variant": "#d3e4fe",
+                        "tertiary-container": "#7c3a55",
+                        "surface-container": "#e5eeff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "data-mono": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .court-pattern {
+            background-color: #2D5A27;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-court-green dark:bg-primary shadow-md flex justify-between items-center w-full px-6 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<span class="text-headline-md font-headline-md font-extrabold text-athletic-orange">VolleyTactics Pro</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-on-primary/80 hover:text-on-primary text-label-bold font-label-bold transition-colors" href="#">Dashboard</a>
+<a class="text-on-primary/80 hover:text-on-primary text-label-bold font-label-bold transition-colors" href="#">Teams</a>
+<a class="text-athletic-orange border-b-2 border-athletic-orange font-bold text-label-bold font-label-bold" href="#">History</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-primary p-2 hover:bg-primary-container/20 rounded-full transition-colors" data-icon="picture_as_pdf">picture_as_pdf</button>
+<button class="material-symbols-outlined text-on-primary p-2 hover:bg-primary-container/20 rounded-full transition-colors" data-icon="settings">settings</button>
+<button class="hidden md:block bg-athletic-orange text-on-primary px-4 py-2 rounded-lg font-label-bold text-label-bold active:scale-95 duration-150">Save</button>
+<button class="hidden md:block text-on-primary/80 hover:text-on-primary px-4 py-2 font-label-bold text-label-bold">Exit</button>
+</div>
+</header>
+<main class="flex-grow max-w-max-width-content mx-auto w-full px-6 py-8">
+<!-- Header & Action Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+<div>
+<h1 class="text-display-lg font-display-lg text-primary mb-2">Tactical Library</h1>
+<p class="text-body-lg text-on-surface-variant">Review and manage your saved team rotations and game strategies.</p>
+</div>
+<button class="bg-athletic-orange text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-headline-sm text-headline-sm shadow-md hover:shadow-lg transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                New Rotation
+            </button>
+</div>
+<!-- Search & Filters -->
+<div class="bg-white p-4 rounded-xl shadow-sm border border-outline-variant flex flex-col md:flex-row gap-4 mb-8">
+<div class="flex-grow relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-2 focus:ring-court-green focus:border-court-green outline-none transition-all" placeholder="Search sessions, teams, or dates..." type="text"/>
+</div>
+<div class="flex gap-2">
+<div class="relative group">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="calendar_today">calendar_today</span>
+<span class="text-label-bold font-label-bold">Date</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+<div class="relative group">
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="groups">groups</span>
+<span class="text-label-bold font-label-bold">Team</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="filter_list">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Cards Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Card 1 -->
+<div class="bg-white rounded-xl shadow-sm border border-outline-variant overflow-hidden group hover:shadow-md transition-all cursor-pointer">
+<div class="h-40 court-pattern relative p-4 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
+<!-- Miniature Court Visualization -->
+<div class="w-full h-full border-2 border-white/40 rounded flex items-center justify-center relative">
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-full h-[2px] bg-white/40"></div>
+</div>
+<!-- Player Tokens Preview -->
+<div class="absolute top-4 left-1/4 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+<div class="absolute top-6 right-1/4 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+<div class="absolute bottom-4 left-1/3 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+<div class="absolute bottom-8 right-1/3 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+</div>
+<div class="absolute top-2 right-2 bg-court-green/80 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">6 Rotations</div>
+</div>
+<div class="p-4">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Lions vs Spikers</h3>
+<div class="flex items-center gap-2 text-on-surface-variant mb-4">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-sm font-label-sm">Oct 24, 2023 • 04:30 PM</span>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant">
+<span class="text-court-green font-label-bold text-label-bold">V-League Finals</span>
+<div class="flex gap-2">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-athletic-orange" data-icon="edit">edit</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-error" data-icon="delete">delete</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white rounded-xl shadow-sm border border-outline-variant overflow-hidden group hover:shadow-md transition-all cursor-pointer">
+<div class="h-40 court-pattern relative p-4 flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
+<div class="w-full h-full border-2 border-white/40 rounded flex items-center justify-center relative">
+<div class="absolute inset-0 flex items-center justify-center"><div class="w-full h-[2px] bg-white/40"></div></div>
+<div class="absolute top-8 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+<div class="absolute bottom-4 left-4 w-4 h-4 rounded-full bg-athletic-orange border border-white"></div>
+</div>
+<div class="absolute top-2 right-2 bg-court-green/80 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">4 Rotations</div>
+</div>
+<div class="p-4">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Eagles Defensive Set</h3>
+<div class="flex items-center gap-2 text-on-surface-variant mb-4">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-sm font-label-sm">Oct 21, 2023 • 11:15 AM</span>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant">
+<span class="text-court-green font-label-bold text-label-bold">Practice Sessions</span>
+<div class="flex gap-2">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-athletic-orange" data-icon="edit">edit</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-error" data-icon="delete">delete</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white rounded-xl shadow-sm border border-outline-variant overflow-hidden group hover:shadow-md transition-all cursor-pointer">
+<div class="h-40 bg-surface-container relative p-4 flex items-center justify-center overflow-hidden">
+<img alt="Volleyball Court" class="absolute inset-0 w-full h-full object-cover opacity-20" data-alt="A top-down view of a pristine, professional volleyball court inside a modern athletic facility with bright lighting and deep green and orange accents. The perspective is clean and geometric, echoing a strategic board layout for coaching." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAorGyYqkbbmFAWgxB0pxfLwAcu8nLUHPtB_rHomBrasemZ7zW5sc_jIsAhi2oAgkRv7BN27UBg513UmZ_GU8KRKwLm53u6eRGp_P_BAwTAb4itnOQ1AJjckY5N4FCqrvba_ZjKVLXxrRuSa-ess9oZc0R4EZ_GyfHo6NA7yVO61web3i7ArCUumlP1Ujmy4BtEZ1iH_TG1KPa2Xa_WSnF9old0Y7n8rnZ5sfzsLa6h7nBHXom-SdZbKvdSYgbj222e80EhU5JH6OXG"/>
+<div class="w-full h-full border-2 border-court-green/20 rounded flex items-center justify-center relative">
+<span class="material-symbols-outlined text-court-green/40 text-4xl" data-icon="analytics">analytics</span>
+</div>
+</div>
+<div class="p-4">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Wolves Quick Attacks</h3>
+<div class="flex items-center gap-2 text-on-surface-variant mb-4">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule">schedule</span>
+<span class="text-label-sm font-label-sm">Oct 19, 2023 • 09:00 AM</span>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant">
+<span class="text-court-green font-label-bold text-label-bold">Scrimmage</span>
+<div class="flex gap-2">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-athletic-orange" data-icon="edit">edit</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-error" data-icon="delete">delete</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 (Empty State Placeholder Style) -->
+<div class="bg-surface-container-low rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center min-h-[300px] group hover:border-athletic-orange transition-all cursor-pointer">
+<span class="material-symbols-outlined text-outline group-hover:text-athletic-orange text-5xl mb-4 transition-colors" data-icon="add_box">add_box</span>
+<span class="text-label-bold font-label-bold text-on-surface-variant group-hover:text-athletic-orange transition-colors">Create New Strategy</span>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-12 flex items-center justify-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-on-primary font-label-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors font-label-bold">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors font-label-bold">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</main>
+<!-- BottomNavBar (Mobile only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface shadow-lg-up md:hidden border-t border-outline-variant">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+<span class="text-label-sm font-label-sm">Draw</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined" data-icon="stylus_note">stylus_note</span>
+<span class="text-label-sm font-label-sm">Highlight</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-athletic-orange text-white rounded-xl p-2" href="#">
+<span class="material-symbols-outlined" data-icon="rule" style="font-variation-settings: 'FILL' 1;">rule</span>
+<span class="text-label-sm font-label-sm">Rules</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined" data-icon="swap_horiz">swap_horiz</span>
+<span class="text-label-sm font-label-sm">Opposing</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-label-sm font-label-sm">History</span>
+</a>
+</nav>
+<script>
+        // Simple search interaction simulation
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('input', (e) => {
+            console.log('Filtering library for:', e.target.value);
+            // This would normally trigger a live filter of the cards
+        });
+
+        // Add micro-interaction to cards
+        document.querySelectorAll('.cursor-pointer').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>
