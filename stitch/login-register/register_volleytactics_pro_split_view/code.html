@@ -1,0 +1,257 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Register | VolleyTactics Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Hanken+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#eff4ff",
+                        "outline-variant": "#c2c9bb",
+                        "primary-fixed-dim": "#a1d494",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#154212",
+                        "on-primary-container": "#9dd090",
+                        "on-secondary-fixed": "#311300",
+                        "on-primary": "#ffffff",
+                        "success-green": "#22C55E",
+                        "secondary-fixed-dim": "#ffb786",
+                        "secondary-fixed": "#ffdcc6",
+                        "on-surface": "#0b1c30",
+                        "inverse-surface": "#213145",
+                        "outline": "#72796e",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb0cc",
+                        "on-error": "#ffffff",
+                        "surface-container": "#e5eeff",
+                        "on-background": "#0b1c30",
+                        "on-surface-variant": "#42493e",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface": "#f8f9ff",
+                        "on-primary-fixed": "#002201",
+                        "surface-bright": "#f8f9ff",
+                        "surface-tint": "#3b6934",
+                        "on-tertiary-fixed-variant": "#71314c",
+                        "text-main": "#0F172A",
+                        "on-tertiary-container": "#ffaac8",
+                        "on-secondary-fixed-variant": "#723600",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#7c3a55",
+                        "background": "#f8f9ff",
+                        "surface-base": "#F8FAFC",
+                        "inverse-primary": "#a1d494",
+                        "on-secondary-container": "#5e2c00",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-primary-fixed-variant": "#23501e",
+                        "athletic-orange": "#F57C00",
+                        "secondary": "#964900",
+                        "primary-container": "#2d5a27",
+                        "tertiary": "#60233e",
+                        "surface-card": "#FFFFFF",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#dce9ff",
+                        "secondary-container": "#fc820c",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffd9e4",
+                        "court-green": "#2D5A27",
+                        "surface-dim": "#cbdbf5",
+                        "error-red": "#EF4444",
+                        "on-tertiary-fixed": "#3b0520",
+                        "primary-fixed": "#bcf0ae"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "data-mono": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-bold": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hero-overlay {
+            background: linear-gradient(to right, rgba(21, 66, 18, 0.85), rgba(21, 66, 18, 0.4));
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+        }
+        .input-focus-ring:focus {
+            outline: none;
+            border-color: #2D5A27;
+            box-shadow: 0 0 0 2px rgba(45, 90, 39, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background overflow-hidden">
+<main class="flex h-screen w-full">
+<!-- Left Side: Cinematic Hero -->
+<section class="hidden lg:flex relative w-7/12 h-full overflow-hidden bg-primary">
+<img alt="Cinematic Volleyball Arena" class="absolute inset-0 w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AP1WRLuM9S0j7Ms5efK5Ti86iLmxoGzrge_D3z4TlQ7MOPotqnJSnJyfUroWkxSKpfl3NZKqyEpe1eCfKx-ztY5liP1HAHeV1_5Ttz1By5Jda8SaLXbUZ59d3EN0h2e-RMGjWulFlpvYKb-it-SiqvU0RnExoGbZ3zK0ihuyPgZYWpJ4bTM5NuZvCoE3OyVd1H1woAEyyZUU4N1rocRTKN3FK5hSLQegVfUm0DpYLt7tCJ7y6DyN_gHsJ5H0Xpk">
+<div class="absolute inset-0 hero-overlay flex flex-col justify-between p-12 lg:p-20">
+<!-- Brand Info -->
+<div class="flex items-center gap-3">
+<div class="bg-athletic-orange p-2 rounded-lg">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">sports_volleyball</span>
+</div>
+<span class="text-white font-headline-md text-headline-md tracking-tight">VolleyTactics Pro</span>
+</div>
+<!-- Headline -->
+<div class="max-w-xl">
+<h1 class="text-white font-display-lg text-display-lg mb-6 leading-tight">
+                        Precision Strategy,<br>
+<span class="text-athletic-orange">Championship Results.</span>
+</h1>
+<p class="text-white/80 font-body-lg text-body-lg max-w-md">
+                        The elite tactical engine for volleyball professionals. Visualize rotations, analyze legality, and dominate the court.
+                    </p>
+</div>
+<!-- Stats/Footer Info -->
+<div class="flex gap-12 border-t border-white/20 pt-8">
+<div>
+<div class="text-white font-headline-sm text-headline-sm">500+</div>
+<div class="text-white/60 font-label-sm text-label-sm uppercase tracking-wider">Pro Teams</div>
+</div>
+<div>
+<div class="text-white font-headline-sm text-headline-sm">12k+</div>
+<div class="text-white/60 font-label-sm text-label-sm uppercase tracking-wider">Tactical Drills</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Side: Sidebar Registration Form -->
+<section class="w-full lg:w-5/12 bg-surface flex flex-col items-center justify-center p-6 sm:p-12 md:p-16 relative overflow-y-auto">
+<div class="w-full max-w-md flex flex-col h-full justify-between py-8">
+<!-- Registration Header -->
+<div class="mb-10">
+<h2 class="text-on-surface font-headline-md text-headline-md mb-2">Create Coach Account</h2>
+<p class="text-on-surface-variant font-body-md text-body-md">Enter your details to begin your tactical journey.</p>
+</div>
+<!-- Form Fields -->
+<form class="space-y-6 flex-grow">
+<div class="space-y-4">
+<!-- Username -->
+<div class="space-y-1.5">
+<label class="text-on-surface-variant font-label-bold text-label-bold" for="username">Username</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">person</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md input-focus-ring transition-all placeholder:text-outline" id="username" name="username" placeholder="e.g. CoachSnyder" required="" type="text">
+</div>
+</div>
+<!-- Work Email -->
+<div class="space-y-1.5">
+<label class="text-on-surface-variant font-label-bold text-label-bold" for="email">Work Email</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">mail</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md input-focus-ring transition-all placeholder:text-outline" id="email" name="email" placeholder="coach@vleague-pros.com" required="" type="email">
+</div>
+</div>
+<!-- Password -->
+<div class="space-y-1.5">
+<label class="text-on-surface-variant font-label-bold text-label-bold" for="password">Password</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-body-md input-focus-ring transition-all placeholder:text-outline" id="password" name="password" placeholder="••••••••••••" required="" type="password">
+</div>
+<p class="text-[11px] text-outline mt-1 px-1">Must be at least 12 characters with 1 special symbol.</p>
+</div>
+</div>
+<!-- Terms & Conditions -->
+<div class="flex items-start gap-3 mt-4">
+<input class="mt-1 w-4 h-4 rounded border-outline-variant text-athletic-orange focus:ring-athletic-orange cursor-pointer" id="terms" name="terms" required="" type="checkbox">
+<label class="text-on-surface-variant font-label-sm text-label-sm leading-relaxed select-none cursor-pointer" for="terms">
+                            I agree to the <a class="text-court-green font-bold hover:underline" href="#">Terms of Service</a> and <a class="text-court-green font-bold hover:underline" href="#">Privacy Policy</a> regarding my coaching data.
+                        </label>
+</div>
+<!-- CTA Button -->
+<button class="w-full group bg-athletic-orange hover:bg-secondary text-white font-headline-sm text-headline-sm py-4 rounded-xl shadow-lg shadow-athletic-orange/20 transition-all flex items-center justify-center gap-2 active:scale-95" type="submit">
+                        Create Account
+                        <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</form>
+<!-- Social/External Register (Optional but matches high-end UX) -->
+<div class="my-8 flex items-center gap-4">
+<div class="h-[1px] flex-grow bg-outline-variant"></div>
+<span class="text-outline font-label-sm text-label-sm uppercase tracking-widest">Or register with</span>
+<div class="h-[1px] flex-grow bg-outline-variant"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-10">
+<button class="flex items-center justify-center gap-2 py-2.5 border border-outline-variant rounded-lg font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<img alt="Google Logo" class="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3eXQ0DO7u-SO13lgUSKjcXLcvDrAKU3nl10wNE_VZL-25wzNDzPvYBYEgsMmSRkCLO-vTObEcINlH0L5IS316z1mYgDYT_BZFQFcgy0BIptkl1UDQTHvB0PhIODBNjDw_OCOko18jT8bDHfX40Arv0iR3_WygZGqlKYtLQGGHVX5Ed6vchDg5chN6DdM_o6hhFgsZCpiElDLby3Sf-ya8ae9ZYwjKbcunX95R2VemhyoXEIuQQZwCtmzm51zasoAlWRaS5a7mYFei">
+                        Google
+                    </button>
+<button class="flex items-center justify-center gap-2 py-2.5 border border-outline-variant rounded-lg font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm">shield</span>
+                        SSO
+                    </button>
+</div>
+<!-- Footer: Return to Login -->
+<div class="pt-8 border-t border-outline-variant text-center space-y-4">
+<p class="text-on-surface-variant font-body-md text-body-md">Already have an account?</p>
+<a class="inline-flex items-center justify-center px-6 py-2.5 border-2 border-court-green text-court-green font-label-bold text-label-bold rounded-lg hover:bg-court-green hover:text-white transition-all active:scale-95" href="#">
+                        Return to Login
+                    </a>
+</div>
+</div>
+</section>
+</main>
+<!-- Visual Polish: Soft Ambient Glow -->
+<div class="fixed top-0 right-0 -z-10 w-96 h-96 bg-athletic-orange/5 blur-[120px] rounded-full pointer-events-none"></div>
+<div class="fixed bottom-0 left-1/4 -z-10 w-64 h-64 bg-court-green/5 blur-[100px] rounded-full pointer-events-none"></div>
+<script>
+        // Micro-interaction for form submission (preventing actual refresh)
+        document.querySelector('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Creating Account...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                alert('Account creation simulation successful. Redirecting to onboarding...');
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }, 1500);
+        });
+
+        // Simple input animation
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('scale-[1.01]');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+    </script>
+</body></html>

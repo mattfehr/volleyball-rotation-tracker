@@ -3,27 +3,25 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { auth, db } from "../firebase";
 import { setDoc, doc } from 'firebase/firestore';
 
-//component for the log in page
+const HERO_IMAGE = "/hero-stadium.png";
+
 export default function AuthForm() {
-  const [isRegistering, setIsRegistering] = useState(false);  //state for if registering or logging in
+  const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);    //state for displaying errors
+  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  //function to handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();     //prevent page reloading
-    setError(null);         //clear previous error
+    e.preventDefault();
+    setError(null);
 
-    const email = `${username}@vbrt.com`; //create fake email using username for firebase auth
+    const email = `${username}@vbrt.com`;
 
-    //if registering create user in firebase auth and save their username in Firestore under /users/{uid}
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'users', auth.currentUser!.uid), {
-          username,
-        });
+        await setDoc(doc(db, 'users', auth.currentUser!.uid), { username });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -32,55 +30,305 @@ export default function AuthForm() {
     }
   };
 
+  const switchMode = () => {
+    setIsRegistering(prev => !prev);
+    setError(null);
+    setUsername("");
+    setPassword("");
+    setShowPassword(false);
+  };
+
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-green-700">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-4"
-      >
-        <h2 className="text-2xl font-bold text-center text-black">
-          {isRegistering ? "Register" : "Login"}
-        </h2>
+    <div className="flex min-h-screen bg-surface font-sans text-on-surface overflow-hidden">
 
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full border border-gray-300 p-2 rounded text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
+      {/* ── Left: Cinematic Hero Panel ── */}
+      <section className="hidden lg:flex lg:w-[60%] xl:w-[65%] relative overflow-hidden bg-court-green">
+        {/* Background image */}
+        <img
+          src={HERO_IMAGE}
+          alt="Volleyball Stadium"
+          className="absolute inset-0 w-full h-full object-cover"
         />
+        {/* Green gradient overlay */}
+        <div className="absolute inset-0 z-10 hero-overlay flex flex-col justify-between px-16 xl:px-24 py-12">
+          {/* Top: Brand mark */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-athletic-orange rounded-lg flex items-center justify-center shadow-lg">
+              <span
+                className="material-symbols-outlined text-white text-3xl"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                sports_volleyball
+              </span>
+            </div>
+            <h1 className="font-display text-2xl font-bold text-white tracking-tight">
+              VolleyTactics Pro
+            </h1>
+          </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-gray-300 p-2 rounded text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
-        />
+          {/* Middle: Tagline + description + badge pills */}
+          <div className="space-y-6">
+            <h2 className="font-display text-5xl font-extrabold text-white leading-tight tracking-tight max-w-2xl">
+              Precision Strategy,<br />
+              <span className="text-athletic-orange">Championship Results.</span>
+            </h2>
+            <p className="text-white/80 text-lg max-w-xl leading-relaxed">
+              The ultimate tactical command center for elite volleyball programs. Design rotations,
+              analyze legality, and dominate the court with data-driven playbooks.
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+                <span
+                  className="material-symbols-outlined text-athletic-orange text-[18px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  verified
+                </span>
+                <span className="text-white text-xs font-bold tracking-widest uppercase">
+                  V-League Approved
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+                <span
+                  className="material-symbols-outlined text-athletic-orange text-[18px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  analytics
+                </span>
+                <span className="text-white text-xs font-bold tracking-widest uppercase">
+                  Real-Time Stats
+                </span>
+              </div>
+            </div>
+          </div>
 
-        {error && (
-          <p className="text-red-600 text-sm text-center">{error}</p>
-        )}
+          {/* Bottom: Social proof counters */}
+          <div className="flex gap-12 border-t border-white/20 pt-8">
+            <div>
+              <div className="text-white text-xl font-bold">500+</div>
+              <div className="text-white/60 text-xs uppercase tracking-widest">Pro Teams</div>
+            </div>
+            <div>
+              <div className="text-white text-xl font-bold">12k+</div>
+              <div className="text-white/60 text-xs uppercase tracking-widest">Tactical Drills</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <button
-          type="submit"
-          className="w-full bg-gray-100 hover:bg-gray-200 text-black font-semibold py-2 rounded"
-        >
-          {isRegistering ? "Create Account" : "Login"}
-        </button>
+      {/* ── Right: Form Panel ── */}
+      <section className="w-full lg:w-[40%] xl:w-[35%] bg-surface-container-lowest flex flex-col justify-center px-8 sm:px-12 md:px-16 xl:px-20 py-12 relative overflow-y-auto shadow-2xl z-20">
 
-        <button
-          type="button"
-          className="text-sm text-blue-600 hover:underline w-full text-center"
-          onClick={() => setIsRegistering((prev) => !prev)}
-        >
-          {isRegistering
-            ? "Already have an account? Login"
-            : "Need an account? Register. Don't actually use your real password lol"}
-        </button>
-      </form>
+        {/* Mobile-only brand header */}
+        <div className="lg:hidden flex items-center gap-2 mb-10">
+          <div className="w-8 h-8 bg-athletic-orange rounded flex items-center justify-center">
+            <span
+              className="material-symbols-outlined text-white text-xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              sports_volleyball
+            </span>
+          </div>
+          <span className="font-display text-lg font-bold text-court-green">VolleyTactics Pro</span>
+        </div>
+
+        <div className="w-full max-w-md mx-auto space-y-8">
+
+          {/* Form heading */}
+          <header className="space-y-1">
+            <h3 className="font-display text-2xl font-bold text-on-surface">
+              {isRegistering ? "Create Coach Account" : "Coach Login"}
+            </h3>
+            <p className="text-on-surface-variant text-base">
+              {isRegistering
+                ? "Enter your details to begin your tactical journey."
+                : "Enter your credentials to access your playbook."}
+            </p>
+          </header>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Username */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="username"
+                className="flex items-center gap-1.5 text-on-surface-variant text-xs font-bold uppercase tracking-wider"
+              >
+                <span className="material-symbols-outlined text-[14px]">badge</span>
+                Username
+              </label>
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-court-green transition-colors text-[20px]">
+                  person
+                </span>
+                <input
+                  id="username"
+                  type="text"
+                  placeholder="e.g. coach_smith"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  required
+                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 pl-11 text-sm focus:ring-2 focus:ring-court-green focus:border-court-green outline-none transition-all placeholder:text-outline"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label
+                  htmlFor="password"
+                  className="flex items-center gap-1.5 text-on-surface-variant text-xs font-bold uppercase tracking-wider"
+                >
+                  <span className="material-symbols-outlined text-[14px]">lock</span>
+                  Password
+                </label>
+                {!isRegistering && (
+                  <a href="#" className="text-athletic-orange text-xs font-semibold hover:underline">
+                    Forgot?
+                  </a>
+                )}
+              </div>
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-court-green transition-colors text-[20px]">
+                  {isRegistering ? "lock" : "key"}
+                </span>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 pl-11 pr-12 text-sm focus:ring-2 focus:ring-court-green focus:border-court-green outline-none transition-all placeholder:text-outline"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface-variant transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+              {isRegistering && (
+                <p className="text-[11px] text-outline px-1">
+                  Use a strong password you don't use elsewhere.
+                </p>
+              )}
+            </div>
+
+            {/* Login: "Keep me logged in" checkbox (placeholder) */}
+            {!isRegistering && (
+              <div className="flex items-center gap-3">
+                <input
+                  id="remember"
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-outline-variant text-athletic-orange focus:ring-athletic-orange/20 cursor-pointer"
+                />
+                <label htmlFor="remember" className="text-sm cursor-pointer select-none">
+                  Keep me logged in
+                </label>
+              </div>
+            )}
+
+            {/* Register: Terms checkbox (placeholder) */}
+            {isRegistering && (
+              <div className="flex items-start gap-3">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 rounded border-outline-variant text-athletic-orange focus:ring-athletic-orange/20 cursor-pointer"
+                />
+                <label htmlFor="terms" className="text-xs text-on-surface-variant leading-relaxed cursor-pointer select-none">
+                  I agree to the{" "}
+                  <a href="#" className="text-court-green font-bold hover:underline">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="#" className="text-court-green font-bold hover:underline">Privacy Policy</a>
+                  {" "}regarding my coaching data.
+                </label>
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <p className="text-error-red text-sm text-center">{error}</p>
+            )}
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              className="w-full bg-athletic-orange text-white font-semibold text-lg py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-[0.98] transition-all duration-150"
+            >
+              {isRegistering ? "Create Account" : "Login"}
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </form>
+
+          {/* OR divider */}
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-outline-variant" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-4 bg-surface-container-lowest text-on-surface-variant text-xs uppercase tracking-widest">
+                {isRegistering ? "Or register with" : "Or sign in with"}
+              </span>
+            </div>
+          </div>
+
+          {/* Social auth placeholders */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-surface rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors text-sm font-semibold text-on-surface"
+            >
+              {/* Google SVG */}
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Google
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-surface rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors text-sm font-semibold text-on-surface"
+            >
+              <span className="material-symbols-outlined text-[18px]">shield</span>
+              {isRegistering ? "SSO" : "Apple"}
+            </button>
+          </div>
+
+          {/* Toggle: switch between Login / Register */}
+          <footer className="pt-6 border-t border-outline-variant/40 space-y-4 text-center">
+            <p className="text-on-surface-variant text-sm">
+              {isRegistering ? "Already have an account?" : "New to VolleyTactics Pro?"}
+            </p>
+            <button
+              type="button"
+              onClick={switchMode}
+              className="w-full border-2 border-court-green text-court-green font-semibold py-2.5 rounded-lg hover:bg-court-green hover:text-white transition-all duration-200 active:scale-95"
+            >
+              {isRegistering ? "Return to Login" : "Register New Account"}
+            </button>
+            <div className="flex justify-center gap-6 text-xs text-on-surface-variant/60">
+              <a href="#" className="hover:text-court-green transition-colors">Terms</a>
+              <a href="#" className="hover:text-court-green transition-colors">Privacy</a>
+              <a href="#" className="hover:text-court-green transition-colors">Support</a>
+            </div>
+          </footer>
+
+        </div>
+      </section>
+
+      {/* Ambient glow accents */}
+      <div className="fixed top-0 right-0 -z-10 w-96 h-96 bg-athletic-orange/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="fixed bottom-0 left-1/4 -z-10 w-64 h-64 bg-court-green/5 blur-[100px] rounded-full pointer-events-none" />
     </div>
   );
 }

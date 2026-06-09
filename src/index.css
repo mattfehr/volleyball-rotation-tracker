@@ -99,6 +99,15 @@
   transform: scale(0.9);
 }
 
+/* Auth page hero gradient overlay */
+.hero-overlay {
+  background: linear-gradient(
+    to right,
+    rgba(21, 66, 18, 0.8) 0%,
+    rgba(21, 66, 18, 0.4) 100%
+  );
+}
+
 /* Court thumbnail pattern for library cards */
 .court-pattern {
   background-color: #2d5a27;
