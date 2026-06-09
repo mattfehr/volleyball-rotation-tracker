@@ -1,8 +1,9 @@
 export type Player = {
   id: string;
-  label: string; // e.g., "OH1"
-  name: string;  // e.g., "Taylor"
+  label: string;   // position abbreviation, e.g. "OH", "S", "MB"
+  name: string;    // e.g. "Taylor"
+  number?: number | null; // jersey number (optional)
   x: number;
   y: number;
-  zone?: number | null; // optional zone number 1 through 6
+  zone?: number | null; // 1-6
 };

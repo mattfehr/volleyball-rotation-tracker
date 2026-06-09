@@ -1,1 +1,109 @@
 @import "tailwindcss";
+
+@theme {
+  /* ── Colors ── */
+  --color-court-green: #2d5a27;
+  --color-athletic-orange: #f57c00;
+
+  --color-surface: #f8f9ff;
+  --color-surface-dim: #cbdbf5;
+  --color-surface-bright: #f8f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface-variant: #d3e4fe;
+  --color-surface-base: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-tint: #3b6934;
+
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #42493e;
+  --color-inverse-surface: #213145;
+  --color-inverse-on-surface: #eaf1ff;
+
+  --color-outline: #72796e;
+  --color-outline-variant: #c2c9bb;
+
+  --color-primary: #154212;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #2d5a27;
+  --color-on-primary-container: #9dd090;
+  --color-inverse-primary: #a1d494;
+  --color-primary-fixed: #bcf0ae;
+  --color-primary-fixed-dim: #a1d494;
+  --color-on-primary-fixed: #002201;
+  --color-on-primary-fixed-variant: #23501e;
+
+  --color-secondary: #964900;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fc820c;
+  --color-on-secondary-container: #5e2c00;
+  --color-secondary-fixed: #ffdcc6;
+  --color-secondary-fixed-dim: #ffb786;
+  --color-on-secondary-fixed: #311300;
+  --color-on-secondary-fixed-variant: #723600;
+
+  --color-tertiary: #60233e;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #7c3a55;
+  --color-on-tertiary-container: #ffaac8;
+  --color-tertiary-fixed: #ffd9e4;
+  --color-tertiary-fixed-dim: #ffb0cc;
+  --color-on-tertiary-fixed: #3b0520;
+  --color-on-tertiary-fixed-variant: #71314c;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-error-red: #ef4444;
+  --color-success-green: #22c55e;
+
+  --color-background: #f8f9ff;
+  --color-on-background: #0b1c30;
+  --color-text-main: #0f172a;
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Border radius ── */
+  --radius-sm: 0.25rem;
+  --radius: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* Court orange gradient */
+.court-gradient {
+  background: radial-gradient(circle at center, #f57c00 0%, #e65100 100%);
+}
+
+/* Player token spring animation */
+.player-token {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.player-token:active {
+  transform: scale(0.9);
+}
+
+/* Hide scrollbars while still scrollable */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

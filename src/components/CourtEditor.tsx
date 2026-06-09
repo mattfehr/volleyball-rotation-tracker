@@ -5,21 +5,26 @@ import jsPDF from 'jspdf';
 import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import type { Player } from '../models/Player';
+import type { Team } from '../models/Team';
 import Court from './Court';
 import type { Stroke } from './CanvasOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { getRotationSetById } from '../lib/firestore';
+import { makeComboKey, type ComboAnnotationKey } from '../lib/firestore';
 import { db } from '../firebase';
 import {
   RECEIVE_VIEW_KEYS,
-  ROTATION_VIEW_KEYS,
-  SERVE_VIEW_KEYS,
   createRotationViewRecord,
   getPreviousRotationViewKey,
   getRotationNumber,
   type RotationViewKey,
 } from '../lib/rotationViews';
+import TopNavBar from './editor/TopNavBar';
+import TeamSidebar from './editor/TeamSidebar';
+import ToolPalette from './editor/ToolPalette';
+import PlayerEditModal from './editor/PlayerEditModal';
 
+// ─── Zone locations (unchanged from original) ─────────────────────────────────
 const ZONE_LOCATIONS: [number, number][] = [
   [650, 525],
   [650, 100],
@@ -29,80 +34,350 @@ const ZONE_LOCATIONS: [number, number][] = [
   [400, 525],
 ];
 
-const createSamplePlayer = (): Player => ({
-  id: uuid(),
-  label: 'S',
-  name: 'Alex',
-  x: 650,
-  y: 525,
-  zone: 1,
-});
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const createInitialRotations = () =>
-  createRotationViewRecord<Player[]>((viewKey) => (viewKey === 'R1' ? [createSamplePlayer()] : []));
+function makeEmptyRotations() {
+  return createRotationViewRecord<Player[]>(() => []);
+}
 
-const createInitialAnnotations = () => createRotationViewRecord<Stroke[]>(() => []);
+function makeDefaultTeam(
+  name: string,
+  abbreviation: string,
+  color: string
+): Team {
+  return {
+    name,
+    abbreviation,
+    color,
+    roster: [],
+    rotations: makeEmptyRotations(),
+  };
+}
 
-const normalizeViewData = <T,>(stored?: Partial<Record<RotationViewKey, T[]>>) =>
-  createRotationViewRecord<T[]>((viewKey) => stored?.[viewKey] ?? []);
+const DEFAULT_HOME_COLOR = '#2563eb';
+const DEFAULT_AWAY_COLOR = '#64748b';
+
+// ─── Per-team business logic ──────────────────────────────────────────────────
+
+function checkLegalityForPlayers(players: Player[]): {
+  result: string;
+  violatingIds: string[];
+} {
+  if (players.length !== 6) {
+    return {
+      result: 'Must have exactly 6 players assigned to zones 1–6.',
+      violatingIds: [],
+    };
+  }
+
+  const zoneMap = new Map(players.map((p) => [p.zone, p]));
+  if (![1, 2, 3, 4, 5, 6].every((z) => zoneMap.has(z))) {
+    return { result: 'All zones 1–6 must be assigned.', violatingIds: [] };
+  }
+
+  const zp = (z: number) => zoneMap.get(z)!;
+  const nm = (z: number) => zp(z).name || 'Unnamed';
+
+  const violations: string[] = [];
+  const violators = new Set<string>();
+
+  const flag = (a: number, b: number, msg: string) => {
+    violations.push(msg);
+    violators.add(zp(a).id);
+    violators.add(zp(b).id);
+  };
+
+  if (zp(1).y < zp(2).y) flag(1, 2, `${nm(1)} must be behind ${nm(2)}`);
+  if (zp(6).y < zp(3).y) flag(6, 3, `${nm(6)} must be behind ${nm(3)}`);
+  if (zp(5).y < zp(4).y) flag(5, 4, `${nm(5)} must be behind ${nm(4)}`);
+  if (zp(2).x < zp(3).x) flag(2, 3, `${nm(2)} must be right of ${nm(3)}`);
+  if (zp(3).x < zp(4).x) flag(3, 4, `${nm(3)} must be right of ${nm(4)}`);
+  if (zp(1).x < zp(6).x) flag(1, 6, `${nm(1)} must be right of ${nm(6)}`);
+  if (zp(6).x < zp(5).x) flag(6, 5, `${nm(6)} must be right of ${nm(5)}`);
+
+  return {
+    result:
+      violations.length === 0
+        ? 'Rotation is legal!'
+        : `Illegal rotation:\n${violations.join(';\n')}`,
+    violatingIds: Array.from(violators),
+  };
+}
+
+function rotateFromPrevious(
+  currentView: RotationViewKey,
+  rotations: Record<RotationViewKey, Player[]>
+): Player[] {
+  const sourceView = getPreviousRotationViewKey(currentView);
+  return rotations[sourceView].map((player) => {
+    const oldZone = player.zone;
+    const newZone =
+      typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
+    const [x, y] =
+      typeof newZone === 'number'
+        ? ZONE_LOCATIONS[newZone - 1]
+        : [player.x, player.y];
+    return { ...player, id: uuid(), zone: newZone, x, y };
+  });
+}
+
+function copyFromOpposite(
+  currentView: RotationViewKey,
+  rotations: Record<RotationViewKey, Player[]>
+): Player[] | null {
+  const isReceive = currentView.startsWith('R');
+  const oppositeView = `${isReceive ? 'S' : 'R'}${getRotationNumber(currentView)}` as RotationViewKey;
+  const oppPlayers = rotations[oppositeView];
+  if (!oppPlayers.length) return null;
+
+  return oppPlayers.map((player) => {
+    const zone = typeof player.zone === 'number' ? player.zone : undefined;
+    const [x, y] = zone ? ZONE_LOCATIONS[zone - 1] : [player.x, player.y];
+    return { ...player, id: uuid(), x, y };
+  });
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+type Phase = 'serve' | 'receive';
 
 function CourtEditor() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // ── Metadata
   const [rotationId, setRotationId] = useState<string | null>(null);
   const [rotationTitle, setRotationTitle] = useState('Untitled Rotation');
-  const [rotations, setRotations] = useState<Record<RotationViewKey, Player[]>>(createInitialRotations);
-  const [annotationStrokes, setAnnotationStrokes] =
-    useState<Record<RotationViewKey, Stroke[]>>(createInitialAnnotations);
-  const [currentView, setCurrentView] = useState<RotationViewKey>('R1');
-  const [rotationCheckEnabled, setRotationCheckEnabled] = useState(false);
-  const [checkResult, setCheckResult] = useState<string | null>(null);
-  const [violatingIds, setViolatingIds] = useState<string[]>([]);
-  const [currentTool, setCurrentTool] = useState<'none' | 'pen' | 'highlight' | 'eraser'>('none');
 
+  // ── Team state
+  const [home, setHome] = useState<Team>(() =>
+    makeDefaultTeam('Home Team', 'HT', DEFAULT_HOME_COLOR)
+  );
+  const [away, setAway] = useState<Team>(() =>
+    makeDefaultTeam('Away Team', 'AT', DEFAULT_AWAY_COLOR)
+  );
+
+  // ── Per-team active view + phase
+  const [homeView, setHomeView] = useState<RotationViewKey>('R1');
+  const [awayView, setAwayView] = useState<RotationViewKey>('R1');
+  const [homePhase, setHomePhase] = useState<Phase>('receive');
+  const [awayPhase, setAwayPhase] = useState<Phase>('receive');
+
+  // ── Visibility
+  const [homeVisible, setHomeVisible] = useState(true);
+  const [awayVisible, setAwayVisible] = useState(true);
+
+  // ── Annotation strokes keyed by combo
+  const [annotationStrokes, setAnnotationStrokes] = useState<
+    Partial<Record<ComboAnnotationKey, Stroke[]>>
+  >({});
+
+  // ── Legality
+  const [homeCheckResult, setHomeCheckResult] = useState<string | null>(null);
+  const [homeViolatingIds, setHomeViolatingIds] = useState<string[]>([]);
+  const [awayCheckResult, setAwayCheckResult] = useState<string | null>(null);
+  const [awayViolatingIds, setAwayViolatingIds] = useState<string[]>([]);
+
+  // ── Drawing tool
+  const [currentTool, setCurrentTool] = useState<
+    'none' | 'pen' | 'highlight' | 'eraser'
+  >('none');
+
+  // ── Player edit modal
+  const [editTarget, setEditTarget] = useState<{
+    player: Player;
+    team: 'home' | 'away';
+  } | null>(null);
+
+  // ── Export refs
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const currentViewIndex = ROTATION_VIEW_KEYS.indexOf(currentView);
-  const players = rotations[currentView];
-  const strokes = annotationStrokes[currentView];
-  const isReceiveView = currentView.startsWith('R');
-  const oppositeView = `${isReceiveView ? 'S' : 'R'}${getRotationNumber(currentView)}` as RotationViewKey;
-  const hasOppositePlayers = rotations[oppositeView].length > 0;
-  const copyButtonLabel = isReceiveView ? '📥 Copy From Serve' : '📥 Copy From Receive';
 
-  const setPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (valueOrUpdater) => {
-    setRotations((prev) => {
-      const currentPlayers = prev[currentView];
-      const nextPlayers =
-        typeof valueOrUpdater === 'function'
-          ? (valueOrUpdater as (currentPlayers: Player[]) => Player[])(currentPlayers)
-          : valueOrUpdater;
+  // ─── Derived ───────────────────────────────────────────────────────────────
 
+  const comboKey = makeComboKey(homeView, awayView);
+  const strokes = annotationStrokes[comboKey] ?? [];
+  const setStrokes = (newStrokes: Stroke[]) => {
+    setAnnotationStrokes((prev) => ({ ...prev, [comboKey]: newStrokes }));
+  };
+
+  const homePlayers = home.rotations[homeView];
+  const awayPlayers = away.rotations[awayView];
+
+  const homeIsReceive = homeView.startsWith('R');
+  const homeOppositeView = `${homeIsReceive ? 'S' : 'R'}${getRotationNumber(homeView)}` as RotationViewKey;
+  const homeHasOpposite = home.rotations[homeOppositeView].length > 0;
+  const homeCopyLabel = homeIsReceive ? 'Copy From Serve' : 'Copy From Receive';
+
+  const awayIsReceive = awayView.startsWith('R');
+  const awayOppositeView = `${awayIsReceive ? 'S' : 'R'}${getRotationNumber(awayView)}` as RotationViewKey;
+  const awayHasOpposite = away.rotations[awayOppositeView].length > 0;
+  const awayCopyLabel = awayIsReceive ? 'Copy From Serve' : 'Copy From Receive';
+
+  // ─── Team mutators ─────────────────────────────────────────────────────────
+
+  const updateTeam = (
+    which: 'home' | 'away',
+    updater: (prev: Team) => Team
+  ) => {
+    if (which === 'home') setHome(updater);
+    else setAway(updater);
+  };
+
+  /** Update on-court players for the team's current view */
+  const setTeamPlayers = (
+    which: 'home' | 'away',
+    valueOrUpdater:
+      | Player[]
+      | ((prev: Player[]) => Player[])
+  ) => {
+    const view = which === 'home' ? homeView : awayView;
+    updateTeam(which, (prev) => {
+      const current = prev.rotations[view];
+      const next =
+        typeof valueOrUpdater === 'function' ? valueOrUpdater(current) : valueOrUpdater;
+      return { ...prev, rotations: { ...prev.rotations, [view]: next } };
+    });
+  };
+
+  // React dispatch-compatible wrappers for Court component
+  const setHomePlayers: React.Dispatch<React.SetStateAction<Player[]>> = (v) =>
+    setTeamPlayers('home', v as Player[] | ((p: Player[]) => Player[]));
+  const setAwayPlayers: React.Dispatch<React.SetStateAction<Player[]>> = (v) =>
+    setTeamPlayers('away', v as Player[] | ((p: Player[]) => Player[]));
+
+  // ─── Player CRUD ───────────────────────────────────────────────────────────
+
+  const addNewPlayer = (which: 'home' | 'away') => {
+    const newPlayer: Player = {
+      id: uuid(),
+      label: 'OH',
+      name: '',
+      number: null,
+      x: 400,
+      y: 300,
+      zone: undefined,
+    };
+    updateTeam(which, (prev) => {
+      const view = which === 'home' ? homeView : awayView;
       return {
         ...prev,
-        [currentView]: nextPlayers,
+        roster: [...prev.roster, newPlayer],
+        rotations: {
+          ...prev.rotations,
+          [view]: [...prev.rotations[view], newPlayer],
+        },
       };
     });
   };
 
-  const setStrokes = (newStrokes: Stroke[]) => {
-    setAnnotationStrokes((prev) => ({
+  const updatePlayer = (which: 'home' | 'away', updated: Player) => {
+    updateTeam(which, (prev) => ({
       ...prev,
-      [currentView]: newStrokes,
+      roster: prev.roster.map((p) => (p.id === updated.id ? updated : p)),
+      rotations: createRotationViewRecord<Player[]>((vk) =>
+        prev.rotations[vk].map((p) => (p.id === updated.id ? updated : p))
+      ),
     }));
   };
 
-  useEffect(() => {
-    const loadFromCloud = async () => {
-      const id = localStorage.getItem('rotation-id');
+  /** Move a bench player onto court for the current view */
+  const addToCourt = (which: 'home' | 'away', player: Player) => {
+    const view = which === 'home' ? homeView : awayView;
+    const spawnX = 400 + Math.random() * 100 - 50;
+    const spawnY = 300 + Math.random() * 100 - 50;
+    const courtPlayer = { ...player, x: spawnX, y: spawnY };
+    updateTeam(which, (prev) => ({
+      ...prev,
+      rotations: {
+        ...prev.rotations,
+        [view]: [...prev.rotations[view], courtPlayer],
+      },
+    }));
+  };
 
+  /** Remove a player from the court for the current view (returns to bench) */
+  const removeFromCourt = (which: 'home' | 'away', playerId: string) => {
+    const view = which === 'home' ? homeView : awayView;
+    updateTeam(which, (prev) => ({
+      ...prev,
+      rotations: {
+        ...prev.rotations,
+        [view]: prev.rotations[view].filter((p) => p.id !== playerId),
+      },
+    }));
+  };
+
+  // ─── Legality ──────────────────────────────────────────────────────────────
+
+  const checkHomeLegality = () => {
+    const { result, violatingIds } = checkLegalityForPlayers(homePlayers);
+    setHomeCheckResult(result);
+    setHomeViolatingIds(violatingIds);
+  };
+
+  const checkAwayLegality = () => {
+    const { result, violatingIds } = checkLegalityForPlayers(awayPlayers);
+    setAwayCheckResult(result);
+    setAwayViolatingIds(violatingIds);
+  };
+
+  // Clear legality when view changes
+  useEffect(() => {
+    setHomeCheckResult(null);
+    setHomeViolatingIds([]);
+  }, [homeView]);
+
+  useEffect(() => {
+    setAwayCheckResult(null);
+    setAwayViolatingIds([]);
+  }, [awayView]);
+
+  // ─── Rotate / Copy ─────────────────────────────────────────────────────────
+
+  const handleRotateFromPrevious = (which: 'home' | 'away') => {
+    const team = which === 'home' ? home : away;
+    const view = which === 'home' ? homeView : awayView;
+    const rotated = rotateFromPrevious(view, team.rotations);
+    updateTeam(which, (prev) => ({
+      ...prev,
+      rotations: { ...prev.rotations, [view]: rotated },
+    }));
+  };
+
+  const handleCopyFromOpposite = (which: 'home' | 'away') => {
+    const team = which === 'home' ? home : away;
+    const view = which === 'home' ? homeView : awayView;
+    const copied = copyFromOpposite(view, team.rotations);
+    if (!copied) return;
+    updateTeam(which, (prev) => ({
+      ...prev,
+      rotations: { ...prev.rotations, [view]: copied },
+    }));
+  };
+
+  // ─── Annotation undo ───────────────────────────────────────────────────────
+
+  const handleUndo = () => {
+    setAnnotationStrokes((prev) => {
+      const current = prev[comboKey] ?? [];
+      return { ...prev, [comboKey]: current.slice(0, -1) };
+    });
+  };
+
+  // ─── Cloud load ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const load = async () => {
+      const id = localStorage.getItem('rotation-id');
       if (!user) return;
 
       if (!id) {
         setRotationTitle('Untitled Rotation');
-        setRotations(createInitialRotations());
-        setAnnotationStrokes(createInitialAnnotations());
-        setCurrentView('R1');
+        setHome(makeDefaultTeam('Home Team', 'HT', DEFAULT_HOME_COLOR));
+        setAway(makeDefaultTeam('Away Team', 'AT', DEFAULT_AWAY_COLOR));
+        setAnnotationStrokes({});
+        setHomeView('R1');
+        setAwayView('R1');
         setRotationId(null);
         return;
       }
@@ -113,190 +388,23 @@ function CourtEditor() {
           alert('Failed to load rotation set.');
           return;
         }
-
         setRotationTitle(set.title || 'Untitled');
-        setRotations(normalizeViewData(set.players));
-        setAnnotationStrokes(normalizeViewData(set.annotations));
-        setCurrentView('R1');
+        setHome(set.home);
+        setAway(set.away);
+        setAnnotationStrokes(set.annotations ?? {});
+        setHomeView('R1');
+        setAwayView('R1');
         setRotationId(id);
         localStorage.removeItem('rotation-id');
-      } catch (error) {
-        console.error('Failed to load from cloud:', error);
+      } catch (err) {
+        console.error('Failed to load from cloud:', err);
         alert('Error loading rotation set.');
       }
     };
-
-    loadFromCloud();
+    load();
   }, [user]);
 
-  useEffect(() => {
-    setCheckResult(null);
-    setViolatingIds([]);
-  }, [currentView]);
-
-  const updatePlayer = <K extends keyof Player>(id: string, field: K, value: Player[K]) => {
-    setPlayers(players.map((player) => (player.id === id ? { ...player, [field]: value } : player)));
-  };
-
-  const addPlayer = () => {
-    setPlayers([
-      ...players,
-      {
-        id: uuid(),
-        label: 'New',
-        name: '',
-        x: 100,
-        y: 100,
-        zone: undefined,
-      },
-    ]);
-  };
-
-  const removePlayer = (id: string) => {
-    setPlayers(players.filter((player) => player.id !== id));
-  };
-
-  const rotateFromPrevious = () => {
-    const sourceView = getPreviousRotationViewKey(currentView);
-    const previousPlayers = rotations[sourceView];
-
-    const rotatedPlayers = previousPlayers.map((player) => {
-      const oldZone = player.zone;
-      const newZone = typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
-      let x = player.x;
-      let y = player.y;
-
-      if (typeof newZone === 'number') {
-        x = ZONE_LOCATIONS[newZone - 1][0];
-        y = ZONE_LOCATIONS[newZone - 1][1];
-      }
-
-      return {
-        ...player,
-        id: uuid(),
-        zone: newZone,
-        x,
-        y,
-      };
-    });
-
-    setRotations((prev) => ({
-      ...prev,
-      [currentView]: rotatedPlayers,
-    }));
-  };
-
-  const copyFromOppositeTab = () => {
-    if (!hasOppositePlayers) return;
-
-    const copiedPlayers = rotations[oppositeView].map((player) => {
-      const zone = typeof player.zone === 'number' ? player.zone : undefined;
-      const [x, y] = zone ? ZONE_LOCATIONS[zone - 1] : [player.x, player.y];
-
-      return {
-        ...player,
-        id: uuid(),
-        x,
-        y,
-      };
-    });
-
-    setRotations((prev) => ({
-      ...prev,
-      [currentView]: copiedPlayers,
-    }));
-    setAnnotationStrokes((prev) => ({
-      ...prev,
-      [currentView]: [],
-    }));
-    setCheckResult(null);
-    setViolatingIds([]);
-  };
-
-  const checkLegality = () => {
-    if (players.length !== 6) {
-      setCheckResult('Must have exactly 6 players assigned to zones 1-6.');
-      setViolatingIds([]);
-      return;
-    }
-
-    const zoneMap = new Map(players.map((player) => [player.zone, player]));
-    const requiredZones = [1, 2, 3, 4, 5, 6];
-    if (!requiredZones.every((zone) => zoneMap.has(zone))) {
-      setCheckResult('All zones 1-6 must be assigned.');
-      setViolatingIds([]);
-      return;
-    }
-
-    const zonePlayer = (zone: number) => zoneMap.get(zone)!;
-    const name = (zone: number) => zonePlayer(zone).name || 'Unnamed';
-
-    const violations: string[] = [];
-    const violators = new Set<string>();
-
-    if (zonePlayer(1).y < zonePlayer(2).y) {
-      violations.push(`${name(1)} must be behind ${name(2)}`);
-      violators.add(zonePlayer(1).id);
-      violators.add(zonePlayer(2).id);
-    }
-    if (zonePlayer(6).y < zonePlayer(3).y) {
-      violations.push(`${name(6)} must be behind ${name(3)}`);
-      violators.add(zonePlayer(6).id);
-      violators.add(zonePlayer(3).id);
-    }
-    if (zonePlayer(5).y < zonePlayer(4).y) {
-      violations.push(`${name(5)} must be behind ${name(4)}`);
-      violators.add(zonePlayer(5).id);
-      violators.add(zonePlayer(4).id);
-    }
-
-    if (zonePlayer(2).x < zonePlayer(3).x) {
-      violations.push(`${name(2)} must be to the right of ${name(3)}`);
-      violators.add(zonePlayer(2).id);
-      violators.add(zonePlayer(3).id);
-    }
-    if (zonePlayer(3).x < zonePlayer(4).x) {
-      violations.push(`${name(3)} must be to the right of ${name(4)}`);
-      violators.add(zonePlayer(3).id);
-      violators.add(zonePlayer(4).id);
-    }
-    if (zonePlayer(1).x < zonePlayer(6).x) {
-      violations.push(`${name(1)} must be to the right of ${name(6)}`);
-      violators.add(zonePlayer(1).id);
-      violators.add(zonePlayer(6).id);
-    }
-    if (zonePlayer(6).x < zonePlayer(5).x) {
-      violations.push(`${name(6)} must be to the right of ${name(5)}`);
-      violators.add(zonePlayer(6).id);
-      violators.add(zonePlayer(5).id);
-    }
-
-    setViolatingIds(Array.from(violators));
-    setCheckResult(
-      violations.length === 0 ? 'Rotation is legal!' : `Illegal rotation:\n${violations.join(';\n')}`
-    );
-  };
-
-  const exportAllToPdf = async () => {
-    const pageWidth = 940;
-    const pageHeight = 1920;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [pageWidth, pageHeight] });
-
-    for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i += 1) {
-      const node = exportRefs.current[i];
-      if (!node) continue;
-
-      try {
-        const dataUrl = await toPng(node);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
-      } catch (error) {
-        console.error(`Failed to export rotation ${i + 1}:`, error);
-      }
-    }
-
-    pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
-  };
+  // ─── Cloud save ────────────────────────────────────────────────────────────
 
   const saveToCloud = async () => {
     if (!user) {
@@ -304,308 +412,253 @@ function CourtEditor() {
       return;
     }
 
-    const sanitizePlayers = (viewPlayers: Player[]): Player[] =>
-      viewPlayers.map((player) => ({
-        id: player.id,
-        label: player.label ?? '',
-        name: player.name ?? '',
-        x: player.x,
-        y: player.y,
-        zone: player.zone ?? null,
-      }));
+    const sanitize = (team: Team): Team => ({
+      ...team,
+      roster: team.roster.map((p) => ({
+        id: p.id,
+        label: p.label ?? '',
+        name: p.name ?? '',
+        number: p.number ?? null,
+        x: p.x,
+        y: p.y,
+        zone: p.zone ?? null,
+      })),
+      rotations: createRotationViewRecord<Player[]>((vk) =>
+        team.rotations[vk].map((p) => ({
+          id: p.id,
+          label: p.label ?? '',
+          name: p.name ?? '',
+          number: p.number ?? null,
+          x: p.x,
+          y: p.y,
+          zone: p.zone ?? null,
+        }))
+      ),
+    });
 
-    const sanitizedRotations = createRotationViewRecord<Player[]>((viewKey) =>
-      sanitizePlayers(rotations[viewKey])
-    );
-    const sanitizedAnnotations = createRotationViewRecord<Stroke[]>((viewKey) => annotationStrokes[viewKey]);
+    // Only save non-empty annotation entries
+    const sparseAnnotations: Partial<Record<ComboAnnotationKey, Stroke[]>> = {};
+    for (const [key, val] of Object.entries(annotationStrokes)) {
+      if (val && val.length > 0) {
+        sparseAnnotations[key as ComboAnnotationKey] = val;
+      }
+    }
+
     const title = rotationTitle.trim() || 'Untitled';
     const data = {
       title,
-      players: sanitizedRotations,
-      annotations: sanitizedAnnotations,
+      home: sanitize(home),
+      away: sanitize(away),
+      annotations: sparseAnnotations,
       updatedAt: Timestamp.now(),
     };
 
     try {
       if (rotationId) {
-        await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, { merge: true });
+        await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, {
+          merge: true,
+        });
         alert(`Updated "${title}"`);
       } else {
-        const docRef = await addDoc(collection(db, 'users', user.uid, 'rotations'), {
-          ...data,
-          createdAt: Timestamp.now(),
-        });
+        const docRef = await addDoc(
+          collection(db, 'users', user.uid, 'rotations'),
+          { ...data, createdAt: Timestamp.now() }
+        );
         setRotationId(docRef.id);
-        alert(`Saved new rotation! ID: ${docRef.id}`);
+        alert(`Saved "${title}"`);
       }
-    } catch (error) {
-      console.error(error);
-      alert('Failed to save to cloud.');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save.');
     }
   };
 
-  const exportNoopSetPlayers: React.Dispatch<React.SetStateAction<Player[]>> = () => {};
-  const renderViewButton = (viewKey: RotationViewKey) => (
-    <button
-      key={viewKey}
-      className={`min-w-12 px-3 py-1 rounded font-medium transition ${
-        viewKey === currentView ? 'bg-yellow-400 text-black' : 'bg-gray-100 hover:bg-gray-200 text-black'
-      }`}
-      onClick={() => setCurrentView(viewKey)}
-    >
-      {viewKey}
-    </button>
-  );
+  // ─── PDF export ────────────────────────────────────────────────────────────
+
+  const exportAllToPdf = async () => {
+    const pageWidth = 680;
+    const pageHeight = 700;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: [pageWidth, pageHeight * RECEIVE_VIEW_KEYS.length],
+    });
+
+    for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i++) {
+      const node = exportRefs.current[i];
+      if (!node) continue;
+      try {
+        const dataUrl = await toPng(node);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+      } catch (err) {
+        console.error(`Export failed for rotation ${i + 1}:`, err);
+      }
+    }
+
+    pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
+  };
+
+  // ─── Player edit modal ─────────────────────────────────────────────────────
+
+  const openEditModal = (player: Player, team: 'home' | 'away') => {
+    setEditTarget({ player, team });
+  };
+
+  const handleSaveEdit = (updated: Player) => {
+    if (!editTarget) return;
+    updatePlayer(editTarget.team, updated);
+    setEditTarget(null);
+  };
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen w-full bg-green-700 flex flex-col items-center p-6 overflow-x-auto">
-      <div className="w-full max-w-screen-xl mb-4 px-6">
-        <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_220px] xl:items-start">
-          <div className="flex justify-start">
-            <input
-              type="text"
-              value={rotationTitle}
-              onChange={(event) => setRotationTitle(event.target.value)}
-              placeholder="Untitled Rotation"
-              className="inline-flex bg-transparent text-white font-semibold text-lg outline-none border-b border-white focus:border-yellow-400 px-1 w-fit max-w-[180px]"
-            />
-          </div>
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#f8f9ff] text-[#0b1c30]">
+      <TopNavBar
+        rotationTitle={rotationTitle}
+        onTitleChange={setRotationTitle}
+        homeVisible={homeVisible}
+        awayVisible={awayVisible}
+        onToggleHome={() => setHomeVisible((v) => !v)}
+        onToggleAway={() => setAwayVisible((v) => !v)}
+        onPdfExport={exportAllToPdf}
+        onSave={saveToCloud}
+        onExit={() => navigate('/library')}
+      />
 
-          <div className="flex justify-center">
-            <div className="flex items-center gap-3 max-w-full overflow-x-auto py-1">
-              <button
-                className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 shrink-0"
-                onClick={() => setCurrentView(ROTATION_VIEW_KEYS[Math.max(currentViewIndex - 1, 0)])}
-                disabled={currentViewIndex === 0}
-              >
-                ← Prev
-              </button>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Home sidebar */}
+        <TeamSidebar
+          side="home"
+          teamName={home.name}
+          teamAbbr={home.abbreviation}
+          teamColor={home.color}
+          isVisible={homeVisible}
+          currentView={homeView}
+          currentPhase={homePhase}
+          onViewChange={setHomeView}
+          onPhaseChange={setHomePhase}
+          players={homePlayers}
+          roster={home.roster}
+          checkResult={homeCheckResult}
+          editingPlayerId={
+            editTarget?.team === 'home' ? editTarget.player.id : null
+          }
+          onCheckLegality={checkHomeLegality}
+          onEditPlayer={(p) => openEditModal(p, 'home')}
+          onAddToCourt={(p) => addToCourt('home', p)}
+          onAddNewPlayer={() => addNewPlayer('home')}
+          onRotateFromPrevious={() => handleRotateFromPrevious('home')}
+          onCopyFromOpposite={() => handleCopyFromOpposite('home')}
+          canCopyFromOpposite={homeHasOpposite}
+          copyLabel={homeCopyLabel}
+        />
 
-              <div className="flex flex-col gap-2 min-w-max items-center">
-                <div className="flex gap-2">
-                  {SERVE_VIEW_KEYS.map(renderViewButton)}
-                </div>
-                <div className="flex gap-2 pl-6">
-                  {RECEIVE_VIEW_KEYS.map(renderViewButton)}
-                </div>
-              </div>
-
-              <button
-                className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded shadow disabled:opacity-50 shrink-0"
-                onClick={() =>
-                  setCurrentView(ROTATION_VIEW_KEYS[Math.min(currentViewIndex + 1, ROTATION_VIEW_KEYS.length - 1)])
-                }
-                disabled={currentViewIndex === ROTATION_VIEW_KEYS.length - 1}
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-start gap-2 xl:justify-end">
-            <button
-              onClick={saveToCloud}
-              className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
-            >
-              💾 Save
-            </button>
-
-            <button
-              onClick={() => navigate('/library')}
-              className="bg-white hover:bg-gray-100 text-black px-3 py-1 rounded flex items-center gap-1"
-            >
-              🔙 Exit
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-6 w-full max-w-screen-xl px-6 items-start">
-        <div className="w-72 space-y-4 bg-white p-4 rounded shadow">
-          <h2 className="text-xl font-bold">Players ({currentView})</h2>
-          <button
-            className="bg-blue-200 hover:bg-blue-300 text-black px-3 py-1 rounded w-full"
-            onClick={addPlayer}
-          >
-            + Add Player
-          </button>
-          {players.map((player) => (
-            <div key={player.id} className="border p-2 rounded bg-white space-y-1">
-              <input
-                type="text"
-                className="w-full border p-1"
-                placeholder="Position"
-                value={player.label}
-                onChange={(event) => updatePlayer(player.id, 'label', event.target.value)}
-              />
-              <input
-                type="text"
-                className="w-full border p-1"
-                placeholder="Name"
-                value={player.name}
-                onChange={(event) => updatePlayer(player.id, 'name', event.target.value)}
-              />
-              <select
-                className="w-full border p-1"
-                value={player.zone ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  updatePlayer(player.id, 'zone', value === '' ? undefined : parseInt(value, 10));
-                }}
-              >
-                <option value="">Zone (1-6)</option>
-                {[1, 2, 3, 4, 5, 6].map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="text-red-600 text-sm hover:underline"
-                onClick={() => removePlayer(player.id)}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ width: '900px', height: '900px' }} className="shrink-0">
+        {/* Center canvas */}
+        <main className="flex-1 bg-[#f8fafc] relative flex items-center justify-center p-4 overflow-hidden">
           <Court
-            players={players}
-            setPlayers={setPlayers}
-            violatingIds={violatingIds}
+            homePlayers={homePlayers}
+            awayPlayers={awayPlayers}
+            homeColor={home.color}
+            awayColor={away.color}
+            setHomePlayers={setHomePlayers}
+            setAwayPlayers={setAwayPlayers}
+            homeViolatingIds={homeViolatingIds}
+            awayViolatingIds={awayViolatingIds}
             strokes={strokes}
             setStrokes={setStrokes}
             currentTool={currentTool}
+            homeVisible={homeVisible}
+            awayVisible={awayVisible}
           />
-        </div>
 
-        <div className="w-64 space-y-4">
-          <div className="bg-white p-4 rounded shadow space-y-4 h-fit">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={rotationCheckEnabled}
-                onChange={(event) => setRotationCheckEnabled(event.target.checked)}
-              />
-              <span className="text-sm">6-player rotation rules</span>
-            </label>
-            <button
-              className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-1 rounded w-full font-semibold"
-              onClick={checkLegality}
-              disabled={!rotationCheckEnabled}
-            >
-              Check Rotation Legality
-            </button>
-            {checkResult && (
-              <p
-                className={`text-sm whitespace-pre-wrap ${
-                  checkResult.includes('Illegal') ? 'text-red-600' : 'text-green-600'
-                }`}
-              >
-                {checkResult}
-              </p>
-            )}
+          {/* Floating tool palette */}
+          <div className="absolute right-6 top-1/2 -translate-y-1/2">
+            <ToolPalette
+              currentTool={currentTool}
+              onToolChange={setCurrentTool}
+              onClearStrokes={() => setStrokes([])}
+              onUndo={handleUndo}
+            />
           </div>
+        </main>
 
-          <div className="bg-white p-4 rounded shadow space-y-3">
-            <button
-              className="bg-gray-100 hover:bg-gray-200 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200"
-              onClick={rotateFromPrevious}
-            >
-              🔁 Rotate From Previous Row
-            </button>
-            <button
-              className="bg-gray-100 hover:bg-gray-200 text-black font-semibold px-3 py-2 rounded w-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={copyFromOppositeTab}
-              disabled={!hasOppositePlayers}
-            >
-              {copyButtonLabel}
-            </button>
-          </div>
-
-          <div className="bg-white p-4 rounded shadow space-y-2">
-            <p className="font-semibold text-sm">Annotation Tool</p>
-            <div className="flex gap-2 flex-wrap">
-              {(['none', 'pen', 'highlight', 'eraser'] as const).map((tool) => {
-                const label =
-                  tool === 'none'
-                    ? '🚫 None'
-                    : tool === 'pen'
-                      ? '✏️ Pen'
-                      : tool === 'highlight'
-                        ? '🖍️ Highlight'
-                        : '🧽 Erase';
-
-                return (
-                  <button
-                    key={tool}
-                    onClick={() => setCurrentTool(tool)}
-                    className={`px-2 py-1 rounded text-sm border ${
-                      currentTool === tool ? 'bg-blue-200 text-black' : 'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <button onClick={() => setStrokes([])} className="mt-2 text-sm text-red-600 hover:underline">
-              🗑️ Clear
-            </button>
-          </div>
-
-          <div className="bg-white p-4 rounded shadow space-y-2">
-            <button
-              onClick={exportAllToPdf}
-              className="bg-gray-100 hover:bg-gray-200 text-black px-3 py-2 rounded w-full"
-            >
-              📄 Export All Rotations as PDF
-            </button>
-          </div>
-        </div>
+        {/* Away sidebar */}
+        <TeamSidebar
+          side="away"
+          teamName={away.name}
+          teamAbbr={away.abbreviation}
+          teamColor={away.color}
+          isVisible={awayVisible}
+          currentView={awayView}
+          currentPhase={awayPhase}
+          onViewChange={setAwayView}
+          onPhaseChange={setAwayPhase}
+          players={awayPlayers}
+          roster={away.roster}
+          checkResult={awayCheckResult}
+          editingPlayerId={
+            editTarget?.team === 'away' ? editTarget.player.id : null
+          }
+          onCheckLegality={checkAwayLegality}
+          onEditPlayer={(p) => openEditModal(p, 'away')}
+          onAddToCourt={(p) => addToCourt('away', p)}
+          onAddNewPlayer={() => addNewPlayer('away')}
+          onRotateFromPrevious={() => handleRotateFromPrevious('away')}
+          onCopyFromOpposite={() => handleCopyFromOpposite('away')}
+          canCopyFromOpposite={awayHasOpposite}
+          copyLabel={awayCopyLabel}
+        />
       </div>
 
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+      {/* Player edit modal */}
+      <PlayerEditModal
+        player={editTarget?.player ?? null}
+        onSave={handleSaveEdit}
+        onRemoveFromCourt={(id) => {
+          if (editTarget) removeFromCourt(editTarget.team, id);
+        }}
+        onClose={() => setEditTarget(null)}
+      />
+
+      {/* Hidden export nodes for PDF */}
+      <div style={{ position: 'absolute', top: -9999, left: -9999, pointerEvents: 'none' }}>
         {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
           const serveView = `S${getRotationNumber(receiveView)}` as RotationViewKey;
-
           return (
             <div
               key={receiveView}
-              ref={(element) => {
-                exportRefs.current[index] = element;
+              ref={(el) => {
+                exportRefs.current[index] = el;
               }}
               style={{
-                width: 940,
-                height: 1920,
-                backgroundColor: '#15803d',
+                width: 680,
+                backgroundColor: '#f8fafc',
                 padding: 16,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 16,
+                gap: 8,
               }}
             >
-              <div style={{ color: '#ffffff', fontSize: 28, fontWeight: 700 }}>
-                {rotationTitle || 'Untitled Rotation'} - {receiveView} / {serveView}
+              <div style={{ color: '#0b1c30', fontSize: 18, fontWeight: 700 }}>
+                {rotationTitle || 'Untitled'} — {receiveView} / {serveView}
               </div>
-
-              {[receiveView, serveView].map((viewKey) => (
-                <div key={viewKey} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ color: '#ffffff', fontSize: 24, fontWeight: 600 }}>{viewKey}</div>
-                  <div style={{ width: '900px', height: '900px' }} className="shrink-0">
-                    <Court
-                      players={rotations[viewKey]}
-                      setPlayers={exportNoopSetPlayers}
-                      violatingIds={[]}
-                      strokes={annotationStrokes[viewKey]}
-                      setStrokes={() => {}}
-                      currentTool="none"
-                    />
-                  </div>
-                </div>
-              ))}
+              <Court
+                homePlayers={home.rotations[receiveView]}
+                awayPlayers={away.rotations[receiveView]}
+                homeColor={home.color}
+                awayColor={away.color}
+                setHomePlayers={() => {}}
+                setAwayPlayers={() => {}}
+                homeViolatingIds={[]}
+                awayViolatingIds={[]}
+                strokes={annotationStrokes[makeComboKey(receiveView, 'R1')] ?? []}
+                setStrokes={() => {}}
+                currentTool="none"
+                homeVisible={true}
+                awayVisible={true}
+              />
             </div>
           );
         })}
