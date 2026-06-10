@@ -295,7 +295,7 @@ export default function RosterList({
                 }`}
               >
                 {bench.length === 0 && !isOver && (
-                  <p className="px-2 pb-1 text-xs text-[#72796e] italic">All players on court</p>
+                  <p className="px-2 pb-1 text-xs text-[#72796e] italic">No one on the bench</p>
                 )}
                 {bench.map((player) => (
                   <BenchRow

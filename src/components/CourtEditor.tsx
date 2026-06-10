@@ -23,16 +23,7 @@ import TopNavBar from './editor/TopNavBar';
 import TeamSidebar from './editor/TeamSidebar';
 import ToolPalette from './editor/ToolPalette';
 import PlayerEditModal from './editor/PlayerEditModal';
-
-// ─── Zone locations (unchanged from original) ─────────────────────────────────
-const ZONE_LOCATIONS: [number, number][] = [
-  [650, 525],
-  [650, 100],
-  [400, 100],
-  [150, 100],
-  [150, 525],
-  [400, 525],
-];
+import { applyZonePosition, type CourtSide } from '../lib/courtZones';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -106,24 +97,26 @@ function checkLegalityForPlayers(players: Player[]): {
 
 function rotateFromPrevious(
   currentView: RotationViewKey,
-  rotations: Record<RotationViewKey, Player[]>
+  rotations: Record<RotationViewKey, Player[]>,
+  side: CourtSide
 ): Player[] {
   const sourceView = getPreviousRotationViewKey(currentView);
   return rotations[sourceView].map((player) => {
     const oldZone = player.zone;
     const newZone =
       typeof oldZone === 'number' ? ((oldZone + 4) % 6) + 1 : undefined;
-    const [x, y] =
+    const { x, y } =
       typeof newZone === 'number'
-        ? ZONE_LOCATIONS[newZone - 1]
-        : [player.x, player.y];
+        ? applyZonePosition({ zone: newZone, x: player.x, y: player.y }, side)
+        : { x: player.x, y: player.y };
     return { ...player, zone: newZone, x, y };
   });
 }
 
 function copyFromOpposite(
   currentView: RotationViewKey,
-  rotations: Record<RotationViewKey, Player[]>
+  rotations: Record<RotationViewKey, Player[]>,
+  side: CourtSide
 ): Player[] | null {
   const isReceive = currentView.startsWith('R');
   const oppositeView = `${isReceive ? 'S' : 'R'}${getRotationNumber(currentView)}` as RotationViewKey;
@@ -131,8 +124,7 @@ function copyFromOpposite(
   if (!oppPlayers.length) return null;
 
   return oppPlayers.map((player) => {
-    const zone = typeof player.zone === 'number' ? player.zone : undefined;
-    const [x, y] = zone ? ZONE_LOCATIONS[zone - 1] : [player.x, player.y];
+    const { x, y } = applyZonePosition(player, side);
     return { ...player, x, y };
   });
 }
@@ -351,7 +343,7 @@ function CourtEditor() {
     const view = which === 'home' ? homeView : awayView;
     const previousView = getPreviousRotationViewKey(view);
     if (!team.rotations[previousView].length) return;
-    const rotated = rotateFromPrevious(view, team.rotations);
+    const rotated = rotateFromPrevious(view, team.rotations, which);
     updateTeam(which, (prev) => ({
       ...prev,
       rotations: { ...prev.rotations, [view]: rotated },
@@ -361,7 +353,7 @@ function CourtEditor() {
   const handleCopyFromOpposite = (which: 'home' | 'away') => {
     const team = which === 'home' ? home : away;
     const view = which === 'home' ? homeView : awayView;
-    const copied = copyFromOpposite(view, team.rotations);
+    const copied = copyFromOpposite(view, team.rotations, which);
     if (!copied) return;
     updateTeam(which, (prev) => ({
       ...prev,
@@ -521,7 +513,8 @@ function CourtEditor() {
 
   const handleSaveEdit = (updated: Player) => {
     if (!editTarget) return;
-    updatePlayer(editTarget.team, updated);
+    const { x, y } = applyZonePosition(updated, editTarget.team);
+    updatePlayer(editTarget.team, { ...updated, x, y });
     setEditTarget(null);
   };
 
@@ -633,6 +626,7 @@ function CourtEditor() {
       {/* Player edit modal */}
       <PlayerEditModal
         player={editTarget?.player ?? null}
+        side={editTarget?.team ?? 'home'}
         onSave={handleSaveEdit}
         onDelete={(id) => {
           if (editTarget) deletePlayer(editTarget.team, id);

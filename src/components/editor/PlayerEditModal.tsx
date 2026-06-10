@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import type { Player } from '../../models/Player';
+import { applyZonePosition, type CourtSide } from '../../lib/courtZones';
 
 const POSITIONS = ['S', 'OH', 'OP', 'MB', 'L', 'DS'] as const;
 
 type Props = {
   player: Player | null;
+  side: CourtSide;
   onSave: (updated: Player) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
 };
 
-export default function PlayerEditModal({ player, onSave, onDelete, onClose }: Props) {
+export default function PlayerEditModal({ player, side, onSave, onDelete, onClose }: Props) {
   const [form, setForm] = useState<Player | null>(null);
 
   useEffect(() => {
@@ -111,9 +113,16 @@ export default function PlayerEditModal({ player, onSave, onDelete, onClose }: P
             </label>
             <select
               value={form.zone ?? ''}
-              onChange={(e) =>
-                update('zone', e.target.value === '' ? undefined : parseInt(e.target.value, 10))
-              }
+              onChange={(e) => {
+                const zone =
+                  e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                if (zone === undefined) {
+                  update('zone', undefined);
+                  return;
+                }
+                const { x, y } = applyZonePosition({ ...form, zone }, side);
+                setForm((prev) => (prev ? { ...prev, zone, x, y } : prev));
+              }}
               className="w-full px-3 py-2 rounded-lg border border-[#c2c9bb] focus:border-[#f57c00] focus:ring-1 focus:ring-[#f57c00] outline-none text-sm bg-white transition-all"
             >
               <option value="">No zone assigned</option>

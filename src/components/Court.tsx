@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import type { Player } from '../models/Player';
+import { COURT_LOCAL_H, COURT_LOCAL_W } from '../lib/courtZones';
 import CanvasOverlay, { type Stroke } from './CanvasOverlay';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+export { COURT_LOCAL_H, COURT_LOCAL_W };
 
-export const COURT_LOCAL_W = 900;
-export const COURT_LOCAL_H = 900;
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 // Regulation: half-court 29.5' × 29.5' (9 m × 9 m); full court 29.5' × 59' (9 m × 18 m)
 // Dual view: each half rendered at HALF_RENDER_BASE; single view scales 2× to fill the canvas
@@ -41,20 +41,21 @@ export type Props = {
 //
 // Each team keeps coords in the 900×900 local space (9 m × 9 m half-court).
 // Mapped to a square render half (halfSize × halfSize):
-//   Home (not mirrored): render_x = (x / LOCAL_W) * halfSize, render_y = (y / LOCAL_H) * halfSize
-//   Away (mirrored):     render_x = ((LOCAL_W - x) / LOCAL_W) * halfSize,
-//                        render_y = ((LOCAL_H - y) / LOCAL_H) * halfSize
+//   Home: render_x = (x / LOCAL_W) * halfSize, render_y = (y / LOCAL_H) * halfSize
+//   Away (mirrored): render_x = ((LOCAL_W - x) / LOCAL_W) * halfSize,
+//                    render_y = ((LOCAL_H - y) / LOCAL_H) * halfSize
 
 function mapLocalToRender(
   x: number,
   y: number,
-  mirrored: boolean,
+  flipX: boolean,
+  flipY: boolean,
   halfSize: number
 ) {
-  const rx = mirrored
+  const rx = flipX
     ? ((COURT_LOCAL_W - x) / COURT_LOCAL_W) * halfSize
     : (x / COURT_LOCAL_W) * halfSize;
-  const ry = mirrored
+  const ry = flipY
     ? ((COURT_LOCAL_H - y) / COURT_LOCAL_H) * halfSize
     : (y / COURT_LOCAL_H) * halfSize;
   return { rx, ry };
@@ -114,7 +115,8 @@ type TokenProps = {
   player: Player;
   teamColor: string;
   isViolating: boolean;
-  mirrored: boolean;
+  flipX: boolean;
+  flipY: boolean;
   halfSize: number;
 };
 
@@ -122,7 +124,8 @@ function DraggablePlayer({
   player,
   teamColor,
   isViolating,
-  mirrored,
+  flipX,
+  flipY,
   halfSize,
 }: TokenProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -131,7 +134,13 @@ function DraggablePlayer({
 
   const coordScale = halfSize / COURT_LOCAL_W;
   const textScale = COURT_LOCAL_W / halfSize;
-  const { rx: baseX, ry: baseY } = mapLocalToRender(player.x, player.y, mirrored, halfSize);
+  const { rx: baseX, ry: baseY } = mapLocalToRender(
+    player.x,
+    player.y,
+    flipX,
+    flipY,
+    halfSize
+  );
 
   const liveDx = transform ? transform.x : 0;
   const liveDy = transform ? transform.y : 0;
@@ -266,7 +275,8 @@ export default function Court({
                 player={player}
                 teamColor={awayColor}
                 isViolating={awayViolatingIds.includes(player.id)}
-                mirrored={true}
+                flipX={true}
+                flipY={true}
                 halfSize={halfSize}
               />
             ))}
@@ -295,7 +305,8 @@ export default function Court({
                 player={player}
                 teamColor={homeColor}
                 isViolating={homeViolatingIds.includes(player.id)}
-                mirrored={false}
+                flipX={false}
+                flipY={false}
                 halfSize={halfSize}
               />
             ))}
