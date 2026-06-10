@@ -117,7 +117,7 @@ function rotateFromPrevious(
       typeof newZone === 'number'
         ? ZONE_LOCATIONS[newZone - 1]
         : [player.x, player.y];
-    return { ...player, id: uuid(), zone: newZone, x, y };
+    return { ...player, zone: newZone, x, y };
   });
 }
 
@@ -133,7 +133,7 @@ function copyFromOpposite(
   return oppPlayers.map((player) => {
     const zone = typeof player.zone === 'number' ? player.zone : undefined;
     const [x, y] = zone ? ZONE_LOCATIONS[zone - 1] : [player.x, player.y];
-    return { ...player, id: uuid(), x, y };
+    return { ...player, x, y };
   });
 }
 
@@ -207,11 +207,13 @@ function CourtEditor() {
   const homeOppositeView = `${homeIsReceive ? 'S' : 'R'}${getRotationNumber(homeView)}` as RotationViewKey;
   const homeHasOpposite = home.rotations[homeOppositeView].length > 0;
   const homeCopyLabel = homeIsReceive ? 'Copy From Serve' : 'Copy From Receive';
+  const homeHasPrevious = home.rotations[getPreviousRotationViewKey(homeView)].length > 0;
 
   const awayIsReceive = awayView.startsWith('R');
   const awayOppositeView = `${awayIsReceive ? 'S' : 'R'}${getRotationNumber(awayView)}` as RotationViewKey;
   const awayHasOpposite = away.rotations[awayOppositeView].length > 0;
   const awayCopyLabel = awayIsReceive ? 'Copy From Serve' : 'Copy From Receive';
+  const awayHasPrevious = away.rotations[getPreviousRotationViewKey(awayView)].length > 0;
 
   // ─── Team mutators ─────────────────────────────────────────────────────────
 
@@ -280,6 +282,16 @@ function CourtEditor() {
     }));
   };
 
+  const deletePlayer = (which: 'home' | 'away', playerId: string) => {
+    updateTeam(which, (prev) => ({
+      ...prev,
+      roster: prev.roster.filter((p) => p.id !== playerId),
+      rotations: createRotationViewRecord<Player[]>((vk) =>
+        prev.rotations[vk].filter((p) => p.id !== playerId)
+      ),
+    }));
+  };
+
   /** Move a bench player onto court for the current view */
   const addToCourt = (which: 'home' | 'away', player: Player) => {
     const view = which === 'home' ? homeView : awayView;
@@ -337,6 +349,8 @@ function CourtEditor() {
   const handleRotateFromPrevious = (which: 'home' | 'away') => {
     const team = which === 'home' ? home : away;
     const view = which === 'home' ? homeView : awayView;
+    const previousView = getPreviousRotationViewKey(view);
+    if (!team.rotations[previousView].length) return;
     const rotated = rotateFromPrevious(view, team.rotations);
     updateTeam(which, (prev) => ({
       ...prev,
@@ -548,8 +562,10 @@ function CourtEditor() {
           onCheckLegality={checkHomeLegality}
           onEditPlayer={(p) => openEditModal(p, 'home')}
           onAddToCourt={(p) => addToCourt('home', p)}
+          onRemoveFromCourt={(id) => removeFromCourt('home', id)}
           onAddNewPlayer={() => addNewPlayer('home')}
           onRotateFromPrevious={() => handleRotateFromPrevious('home')}
+          canRotateFromPrevious={homeHasPrevious}
           onCopyFromOpposite={() => handleCopyFromOpposite('home')}
           canCopyFromOpposite={homeHasOpposite}
           copyLabel={homeCopyLabel}
@@ -604,8 +620,10 @@ function CourtEditor() {
           onCheckLegality={checkAwayLegality}
           onEditPlayer={(p) => openEditModal(p, 'away')}
           onAddToCourt={(p) => addToCourt('away', p)}
+          onRemoveFromCourt={(id) => removeFromCourt('away', id)}
           onAddNewPlayer={() => addNewPlayer('away')}
           onRotateFromPrevious={() => handleRotateFromPrevious('away')}
+          canRotateFromPrevious={awayHasPrevious}
           onCopyFromOpposite={() => handleCopyFromOpposite('away')}
           canCopyFromOpposite={awayHasOpposite}
           copyLabel={awayCopyLabel}
@@ -616,8 +634,9 @@ function CourtEditor() {
       <PlayerEditModal
         player={editTarget?.player ?? null}
         onSave={handleSaveEdit}
-        onRemoveFromCourt={(id) => {
-          if (editTarget) removeFromCourt(editTarget.team, id);
+        onDelete={(id) => {
+          if (editTarget) deletePlayer(editTarget.team, id);
+          setEditTarget(null);
         }}
         onClose={() => setEditTarget(null)}
       />

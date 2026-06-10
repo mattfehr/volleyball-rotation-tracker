@@ -6,11 +6,11 @@ const POSITIONS = ['S', 'OH', 'OP', 'MB', 'L', 'DS'] as const;
 type Props = {
   player: Player | null;
   onSave: (updated: Player) => void;
-  onRemoveFromCourt: (id: string) => void;
+  onDelete: (id: string) => void;
   onClose: () => void;
 };
 
-export default function PlayerEditModal({ player, onSave, onRemoveFromCourt, onClose }: Props) {
+export default function PlayerEditModal({ player, onSave, onDelete, onClose }: Props) {
   const [form, setForm] = useState<Player | null>(null);
 
   useEffect(() => {
@@ -130,12 +130,14 @@ export default function PlayerEditModal({ player, onSave, onRemoveFromCourt, onC
         <div className="p-4 bg-[#eff4ff] flex justify-between items-center gap-3 border-t border-[#c2c9bb]">
           <button
             onClick={() => {
-              onRemoveFromCourt(form.id);
-              onClose();
+              const name = form.name || form.label;
+              if (window.confirm(`Delete "${name}" from the roster? This cannot be undone.`)) {
+                onDelete(form.id);
+              }
             }}
             className="px-3 py-2 rounded-lg font-semibold text-sm text-[#ef4444] hover:bg-[#ffdad6]/40 transition-colors"
           >
-            Move to Bench
+            Delete
           </button>
           <div className="flex gap-2">
             <button

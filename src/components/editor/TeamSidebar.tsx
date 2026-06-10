@@ -22,8 +22,10 @@ type Props = {
   onCheckLegality: () => void;
   onEditPlayer: (player: Player) => void;
   onAddToCourt: (player: Player) => void;
+  onRemoveFromCourt: (playerId: string) => void;
   onAddNewPlayer: () => void;
   onRotateFromPrevious: () => void;
+  canRotateFromPrevious: boolean;
   onCopyFromOpposite: () => void;
   canCopyFromOpposite: boolean;
   copyLabel: string;
@@ -46,8 +48,10 @@ export default function TeamSidebar({
   onCheckLegality,
   onEditPlayer,
   onAddToCourt,
+  onRemoveFromCourt,
   onAddNewPlayer,
   onRotateFromPrevious,
+  canRotateFromPrevious,
   onCopyFromOpposite,
   canCopyFromOpposite,
   copyLabel,
@@ -94,6 +98,11 @@ export default function TeamSidebar({
           onPhaseChange={onPhaseChange}
           onCheckLegality={onCheckLegality}
           checkResult={checkResult}
+          onRotateFromPrevious={onRotateFromPrevious}
+          canRotateFromPrevious={canRotateFromPrevious}
+          onCopyFromOpposite={onCopyFromOpposite}
+          canCopyFromOpposite={canCopyFromOpposite}
+          copyLabel={copyLabel}
         />
       </div>
 
@@ -105,10 +114,7 @@ export default function TeamSidebar({
         editingId={editingPlayerId}
         onEditPlayer={onEditPlayer}
         onAddToCourt={onAddToCourt}
-        onRotateFromPrevious={onRotateFromPrevious}
-        onCopyFromOpposite={onCopyFromOpposite}
-        canCopyFromOpposite={canCopyFromOpposite}
-        copyLabel={copyLabel}
+        onRemoveFromCourt={onRemoveFromCourt}
         side={side}
       />
 

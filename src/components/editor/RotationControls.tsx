@@ -10,6 +10,11 @@ type Props = {
   onPhaseChange: (phase: Phase) => void;
   onCheckLegality: () => void;
   checkResult: string | null;
+  onRotateFromPrevious: () => void;
+  canRotateFromPrevious: boolean;
+  onCopyFromOpposite: () => void;
+  canCopyFromOpposite: boolean;
+  copyLabel: string;
 };
 
 export default function RotationControls({
@@ -19,6 +24,11 @@ export default function RotationControls({
   onPhaseChange,
   onCheckLegality,
   checkResult,
+  onRotateFromPrevious,
+  canRotateFromPrevious,
+  onCopyFromOpposite,
+  canCopyFromOpposite,
+  copyLabel,
 }: Props) {
   const rotationNumber = Number(currentView.slice(1));
   const isServe = SERVE_VIEW_KEYS.includes(currentView as (typeof SERVE_VIEW_KEYS)[number]);
@@ -97,6 +107,26 @@ export default function RotationControls({
         <span className="material-symbols-outlined text-[16px]">verified</span>
         Check Rotation Legality
       </button>
+
+      {/* Tactical utilities */}
+      <div className="space-y-1.5">
+        <button
+          onClick={onRotateFromPrevious}
+          disabled={!canRotateFromPrevious}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-[#42493e] hover:bg-[#e5eeff] transition-colors border border-[#c2c9bb]/30 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-[18px]">published_with_changes</span>
+          Rotate From Previous Row
+        </button>
+        <button
+          onClick={onCopyFromOpposite}
+          disabled={!canCopyFromOpposite}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-[#42493e] hover:bg-[#e5eeff] transition-colors border border-[#c2c9bb]/30 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-[18px]">content_copy</span>
+          {copyLabel}
+        </button>
+      </div>
 
       {/* Legality result */}
       {checkResult && (
