@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Player } from '../../models/Player';
 import { applyZonePosition, type CourtSide } from '../../lib/courtZones';
+import ConfirmDialog from './ConfirmDialog';
 
 const POSITIONS = ['S', 'OH', 'OP', 'MB', 'L', 'DS'] as const;
 
@@ -14,6 +15,7 @@ type Props = {
 
 export default function PlayerEditModal({ player, side, onSave, onDelete, onClose }: Props) {
   const [form, setForm] = useState<Player | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setForm(player ? { ...player } : null);
@@ -138,12 +140,7 @@ export default function PlayerEditModal({ player, side, onSave, onDelete, onClos
         {/* Footer */}
         <div className="p-4 bg-[#eff4ff] flex justify-between items-center gap-3 border-t border-[#c2c9bb]">
           <button
-            onClick={() => {
-              const name = form.name || form.label;
-              if (window.confirm(`Delete "${name}" from the roster? This cannot be undone.`)) {
-                onDelete(form.id);
-              }
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
             className="px-3 py-2 rounded-lg font-semibold text-sm text-[#ef4444] hover:bg-[#ffdad6]/40 transition-colors"
           >
             Delete
@@ -167,6 +164,23 @@ export default function PlayerEditModal({ player, side, onSave, onDelete, onClos
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete Player"
+          message={`Delete "${form.name || form.label}" from the roster? This cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          confirmVariant="danger"
+          showClose={true}
+          onConfirm={() => {
+            onDelete(form.id);
+            setShowDeleteConfirm(false);
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+          onClose={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }

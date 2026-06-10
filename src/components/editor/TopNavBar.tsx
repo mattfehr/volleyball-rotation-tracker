@@ -23,12 +23,19 @@ export default function TopNavBar({
 }: Props) {
   return (
     <header className="bg-[#2d5a27] shadow-md flex items-center justify-between w-full px-6 py-3 z-50 shrink-0">
-      {/* Brand + nav */}
-      <div className="flex items-center gap-8">
-        <span className="font-[\'Hanken_Grotesk\'] font-extrabold text-xl text-[#f57c00] tracking-tight select-none">
+      {/* Brand + title + nav */}
+      <div className="flex items-center gap-6 min-w-0">
+        <span className="font-[\'Hanken_Grotesk\'] font-extrabold text-xl text-[#f57c00] tracking-tight select-none shrink-0">
           VolleyTactics Pro
         </span>
-        <nav className="hidden md:flex gap-6">
+        <input
+          type="text"
+          value={rotationTitle}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder="Untitled Rotation"
+          className="bg-transparent text-white font-semibold text-lg outline-none border-b border-transparent focus:border-white/40 w-48 max-w-[16rem] min-w-0 transition-colors shrink"
+        />
+        <nav className="hidden md:flex gap-6 shrink-0">
           <button
             onClick={onExit}
             className="text-white/70 hover:text-white font-semibold text-sm transition-colors"
@@ -41,8 +48,8 @@ export default function TopNavBar({
         </nav>
       </div>
 
-      {/* Centered visibility toggles + title */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+      {/* Centered visibility toggles */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
         <div className="bg-white/10 p-1 rounded-full flex items-center gap-1">
           <button
             onClick={onToggleHome}
@@ -77,13 +84,6 @@ export default function TopNavBar({
             Away
           </button>
         </div>
-        <input
-          type="text"
-          value={rotationTitle}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Untitled Rotation"
-          className="bg-transparent text-white/80 text-xs text-center outline-none border-b border-transparent focus:border-white/40 focus:text-white w-40 transition-colors"
-        />
       </div>
 
       {/* Right actions */}

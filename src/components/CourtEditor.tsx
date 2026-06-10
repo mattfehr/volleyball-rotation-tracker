@@ -23,6 +23,8 @@ import TopNavBar from './editor/TopNavBar';
 import TeamSidebar from './editor/TeamSidebar';
 import ToolPalette from './editor/ToolPalette';
 import PlayerEditModal from './editor/PlayerEditModal';
+import ConfirmDialog from './editor/ConfirmDialog';
+import Toast from './editor/Toast';
 import { applyZonePosition, type CourtSide } from '../lib/courtZones';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -47,6 +49,15 @@ function makeDefaultTeam(
 
 const DEFAULT_HOME_COLOR = '#2563eb';
 const DEFAULT_AWAY_COLOR = '#64748b';
+
+function buildSnapshot(
+  rotationTitle: string,
+  home: Team,
+  away: Team,
+  annotationStrokes: Partial<Record<ComboAnnotationKey, Stroke[]>>
+): string {
+  return JSON.stringify({ rotationTitle, home, away, annotationStrokes });
+}
 
 // ─── Per-team business logic ──────────────────────────────────────────────────
 
@@ -158,6 +169,18 @@ function CourtEditor() {
   // ── Visibility
   const [homeVisible, setHomeVisible] = useState(true);
   const [awayVisible, setAwayVisible] = useState(true);
+  const [homePlayersVisible, setHomePlayersVisible] = useState(true);
+  const [awayPlayersVisible, setAwayPlayersVisible] = useState(true);
+
+  // ── Dialogs & feedback
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showPdfConfirm, setShowPdfConfirm] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: 'success' | 'error';
+  } | null>(null);
+
+  const savedSnapshotRef = useRef<string | null>(null);
 
   // ── Annotation strokes keyed by combo
   const [annotationStrokes, setAnnotationStrokes] = useState<
@@ -206,6 +229,20 @@ function CourtEditor() {
   const awayHasOpposite = away.rotations[awayOppositeView].length > 0;
   const awayCopyLabel = awayIsReceive ? 'Copy From Serve' : 'Copy From Receive';
   const awayHasPrevious = away.rotations[getPreviousRotationViewKey(awayView)].length > 0;
+
+  const isDirty =
+    savedSnapshotRef.current !== null &&
+    buildSnapshot(rotationTitle, home, away, annotationStrokes) !==
+      savedSnapshotRef.current;
+
+  const captureSnapshot = (
+    title: string,
+    homeTeam: Team,
+    awayTeam: Team,
+    strokes: Partial<Record<ComboAnnotationKey, Stroke[]>>
+  ) => {
+    savedSnapshotRef.current = buildSnapshot(title, homeTeam, awayTeam, strokes);
+  };
 
   // ─── Team mutators ─────────────────────────────────────────────────────────
 
@@ -378,33 +415,39 @@ function CourtEditor() {
       if (!user) return;
 
       if (!id) {
+        const defaultHome = makeDefaultTeam('Home Team', 'HT', DEFAULT_HOME_COLOR);
+        const defaultAway = makeDefaultTeam('Away Team', 'AT', DEFAULT_AWAY_COLOR);
         setRotationTitle('Untitled Rotation');
-        setHome(makeDefaultTeam('Home Team', 'HT', DEFAULT_HOME_COLOR));
-        setAway(makeDefaultTeam('Away Team', 'AT', DEFAULT_AWAY_COLOR));
+        setHome(defaultHome);
+        setAway(defaultAway);
         setAnnotationStrokes({});
         setHomeView('R1');
         setAwayView('R1');
         setRotationId(null);
+        captureSnapshot('Untitled Rotation', defaultHome, defaultAway, {});
         return;
       }
 
       try {
         const set = await getRotationSetById(user.uid, id);
         if (!set) {
-          alert('Failed to load rotation set.');
+          setToast({ message: 'Failed to load rotation set.', variant: 'error' });
           return;
         }
-        setRotationTitle(set.title || 'Untitled');
+        const title = set.title || 'Untitled';
+        const annotations = set.annotations ?? {};
+        setRotationTitle(title);
         setHome(set.home);
         setAway(set.away);
-        setAnnotationStrokes(set.annotations ?? {});
+        setAnnotationStrokes(annotations);
         setHomeView('R1');
         setAwayView('R1');
         setRotationId(id);
+        captureSnapshot(title, set.home, set.away, annotations);
         localStorage.removeItem('rotation-id');
       } catch (err) {
         console.error('Failed to load from cloud:', err);
-        alert('Error loading rotation set.');
+        setToast({ message: 'Error loading rotation set.', variant: 'error' });
       }
     };
     load();
@@ -412,10 +455,10 @@ function CourtEditor() {
 
   // ─── Cloud save ────────────────────────────────────────────────────────────
 
-  const saveToCloud = async () => {
+  const saveToCloud = async (): Promise<boolean> => {
     if (!user) {
-      alert('You must be logged in to save.');
-      return;
+      setToast({ message: 'You must be logged in to save.', variant: 'error' });
+      return false;
     }
 
     const sanitize = (team: Team): Team => ({
@@ -464,19 +507,53 @@ function CourtEditor() {
         await setDoc(doc(db, 'users', user.uid, 'rotations', rotationId), data, {
           merge: true,
         });
-        alert(`Updated "${title}"`);
+        captureSnapshot(title, home, away, annotationStrokes);
+        setToast({ message: `Updated "${title}"`, variant: 'success' });
       } else {
         const docRef = await addDoc(
           collection(db, 'users', user.uid, 'rotations'),
           { ...data, createdAt: Timestamp.now() }
         );
         setRotationId(docRef.id);
-        alert(`Saved "${title}"`);
+        captureSnapshot(title, home, away, annotationStrokes);
+        setToast({ message: `Saved "${title}"`, variant: 'success' });
       }
+      return true;
     } catch (err) {
       console.error(err);
-      alert('Failed to save.');
+      setToast({ message: 'Failed to save.', variant: 'error' });
+      return false;
     }
+  };
+
+  const handleExit = () => {
+    if (isDirty) {
+      setShowExitConfirm(true);
+    } else {
+      navigate('/library');
+    }
+  };
+
+  const handleExitConfirmSave = async () => {
+    const saved = await saveToCloud();
+    if (saved) {
+      setShowExitConfirm(false);
+      navigate('/library');
+    }
+  };
+
+  const handleExitDiscard = () => {
+    setShowExitConfirm(false);
+    navigate('/library');
+  };
+
+  const handlePdfExportClick = () => {
+    setShowPdfConfirm(true);
+  };
+
+  const handlePdfExportConfirm = async () => {
+    setShowPdfConfirm(false);
+    await exportAllToPdf();
   };
 
   // ─── PDF export ────────────────────────────────────────────────────────────
@@ -529,9 +606,9 @@ function CourtEditor() {
         awayVisible={awayVisible}
         onToggleHome={() => setHomeVisible((v) => !v || !awayVisible)}
         onToggleAway={() => setAwayVisible((v) => !v || !homeVisible)}
-        onPdfExport={exportAllToPdf}
+        onPdfExport={handlePdfExportClick}
         onSave={saveToCloud}
-        onExit={() => navigate('/library')}
+        onExit={handleExit}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -541,7 +618,11 @@ function CourtEditor() {
           teamName={home.name}
           teamAbbr={home.abbreviation}
           teamColor={home.color}
-          isVisible={homeVisible}
+          playersVisible={homePlayersVisible}
+          onTogglePlayersVisible={() => setHomePlayersVisible((v) => !v)}
+          onTeamNameChange={(name) =>
+            updateTeam('home', (t) => ({ ...t, name }))
+          }
           currentView={homeView}
           currentPhase={homePhase}
           onViewChange={setHomeView}
@@ -580,6 +661,10 @@ function CourtEditor() {
             currentTool={currentTool}
             homeVisible={homeVisible}
             awayVisible={awayVisible}
+            homePlayersVisible={homePlayersVisible}
+            awayPlayersVisible={awayPlayersVisible}
+            homeLabel={home.name}
+            awayLabel={away.name}
           />
 
           {/* Floating tool palette */}
@@ -599,7 +684,11 @@ function CourtEditor() {
           teamName={away.name}
           teamAbbr={away.abbreviation}
           teamColor={away.color}
-          isVisible={awayVisible}
+          playersVisible={awayPlayersVisible}
+          onTogglePlayersVisible={() => setAwayPlayersVisible((v) => !v)}
+          onTeamNameChange={(name) =>
+            updateTeam('away', (t) => ({ ...t, name }))
+          }
           currentView={awayView}
           currentPhase={awayPhase}
           onViewChange={setAwayView}
@@ -622,6 +711,38 @@ function CourtEditor() {
           copyLabel={awayCopyLabel}
         />
       </div>
+
+      {showExitConfirm && (
+        <ConfirmDialog
+          title="Save before leaving?"
+          message="You have unsaved changes. Would you like to save before returning to the library?"
+          confirmLabel="Yes"
+          cancelLabel="No"
+          onConfirm={handleExitConfirmSave}
+          onCancel={handleExitDiscard}
+          onClose={() => setShowExitConfirm(false)}
+        />
+      )}
+
+      {showPdfConfirm && (
+        <ConfirmDialog
+          title="Export PDF"
+          message="Do you want to export the rotations as a PDF?"
+          confirmLabel="Yes"
+          cancelLabel="No"
+          showClose={false}
+          onConfirm={handlePdfExportConfirm}
+          onCancel={() => setShowPdfConfirm(false)}
+        />
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={() => setToast(null)}
+        />
+      )}
 
       {/* Player edit modal */}
       <PlayerEditModal
@@ -671,6 +792,10 @@ function CourtEditor() {
                 currentTool="none"
                 homeVisible={true}
                 awayVisible={true}
+                homePlayersVisible={true}
+                awayPlayersVisible={true}
+                homeLabel={home.name}
+                awayLabel={away.name}
               />
             </div>
           );

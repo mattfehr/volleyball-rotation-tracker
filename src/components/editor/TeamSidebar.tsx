@@ -10,7 +10,9 @@ type Props = {
   teamName: string;
   teamAbbr: string;
   teamColor: string;
-  isVisible: boolean;
+  playersVisible: boolean;
+  onTogglePlayersVisible: () => void;
+  onTeamNameChange: (name: string) => void;
   currentView: RotationViewKey;
   currentPhase: Phase;
   onViewChange: (view: RotationViewKey) => void;
@@ -36,7 +38,9 @@ export default function TeamSidebar({
   teamName,
   teamAbbr,
   teamColor,
-  isVisible,
+  playersVisible,
+  onTogglePlayersVisible,
+  onTeamNameChange,
   currentView,
   currentPhase,
   onViewChange,
@@ -71,20 +75,27 @@ export default function TeamSidebar({
           >
             {teamAbbr}
           </div>
-          <span
-            className="material-symbols-outlined text-[16px]"
-            style={{ color: isVisible ? teamColor : '#72796e' }}
-            title={isVisible ? 'Visible on court' : 'Hidden from court'}
+          <button
+            type="button"
+            onClick={onTogglePlayersVisible}
+            className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+            title={playersVisible ? 'Hide players on court' : 'Show players on court'}
           >
-            {isVisible ? 'visibility' : 'visibility_off'}
-          </span>
-          <div className="min-w-0">
-            <h3
-              className="font-['Hanken_Grotesk'] font-semibold text-[15px] leading-tight truncate"
-              style={{ color: teamColor }}
+            <span
+              className="material-symbols-outlined text-[16px]"
+              style={{ color: playersVisible ? teamColor : '#72796e' }}
             >
-              {teamName}
-            </h3>
+              {playersVisible ? 'visibility' : 'visibility_off'}
+            </span>
+          </button>
+          <div className="min-w-0 flex-1">
+            <input
+              type="text"
+              value={teamName}
+              onChange={(e) => onTeamNameChange(e.target.value)}
+              className="font-['Hanken_Grotesk'] font-semibold text-[15px] leading-tight w-full bg-transparent outline-none border-b border-transparent focus:border-[#c2c9bb] transition-colors truncate"
+              style={{ color: teamColor }}
+            />
             <p className="text-[11px] text-[#42493e]">
               {currentView} · {currentPhase === 'serve' ? 'Serve' : 'Receive'}
             </p>

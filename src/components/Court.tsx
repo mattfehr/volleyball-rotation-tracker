@@ -35,6 +35,10 @@ export type Props = {
   currentTool: 'none' | 'pen' | 'highlight' | 'eraser';
   homeVisible: boolean;
   awayVisible: boolean;
+  homePlayersVisible?: boolean;
+  awayPlayersVisible?: boolean;
+  homeLabel?: string;
+  awayLabel?: string;
 };
 
 // ─── Coordinate mapping ───────────────────────────────────────────────────────
@@ -204,6 +208,10 @@ export default function Court({
   currentTool,
   homeVisible,
   awayVisible,
+  homePlayersVisible = true,
+  awayPlayersVisible = true,
+  homeLabel = 'HOME',
+  awayLabel = 'AWAY',
 }: Props) {
   const bothVisible = homeVisible && awayVisible;
   const halfSize = bothVisible ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
@@ -266,10 +274,10 @@ export default function Court({
               <span
                 className={`text-white/10 font-black uppercase tracking-widest ${watermarkSize}`}
               >
-                AWAY
+                {awayLabel.toUpperCase()}
               </span>
             </div>
-            {awayPlayers.map((player) => (
+            {awayPlayersVisible && awayPlayers.map((player) => (
               <DraggablePlayer
                 key={player.id}
                 player={player}
@@ -296,10 +304,10 @@ export default function Court({
               <span
                 className={`text-white/10 font-black uppercase tracking-widest ${watermarkSize}`}
               >
-                HOME
+                {homeLabel.toUpperCase()}
               </span>
             </div>
-            {homePlayers.map((player) => (
+            {homePlayersVisible && homePlayers.map((player) => (
               <DraggablePlayer
                 key={player.id}
                 player={player}

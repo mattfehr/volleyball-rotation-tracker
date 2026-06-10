@@ -93,7 +93,7 @@ export default function RotationControls({
                   : 'text-[#42493e] bg-[#eff4ff] border-[#c2c9bb]/30 hover:bg-[#dce9ff]'
               }`}
             >
-              R{num}
+              {currentPhase === 'serve' ? 'S' : 'R'}{num}
             </button>
           );
         })}
