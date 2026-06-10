@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { v4 as uuid } from 'uuid';
-import { toJpeg } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +26,6 @@ import ToolPalette from './editor/ToolPalette';
 import PlayerEditModal from './editor/PlayerEditModal';
 import ConfirmDialog from './editor/ConfirmDialog';
 import PdfExportDialog, {
-  DEFAULT_PDF_EXPORT_OPTIONS,
   type PdfExportOptions,
   type PdfTeamMode,
 } from './editor/PdfExportDialog';
@@ -52,11 +51,11 @@ const EXPORT_PADDING = 16;
 const EXPORT_GAP = 16;
 const EXPORT_TITLE_HEIGHT = 26;
 const EXPORT_LABEL_HEIGHT = 18;
+const EXPORT_PILL_PADDING = 20;
 
 function getExportPageDimensions(teamMode: PdfTeamMode) {
-  const bothTeams = teamMode === 'both';
-  const courtW = bothTeams ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
-  const courtH = bothTeams ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const courtW = HALF_RENDER_BASE;
+  const courtH = teamMode === 'both' ? FULL_RENDER_H : HALF_RENDER_BASE;
   const pageWidth = EXPORT_PADDING * 2 + courtW * 2 + EXPORT_GAP;
   const pageHeight =
     EXPORT_PADDING * 2 +
@@ -64,8 +63,9 @@ function getExportPageDimensions(teamMode: PdfTeamMode) {
     8 +
     EXPORT_LABEL_HEIGHT +
     4 +
-    courtH;
-  return { pageWidth, pageHeight };
+    courtH +
+    EXPORT_PILL_PADDING;
+  return { pageWidth, pageHeight, courtW, courtH };
 }
 
 function scaleStrokesForExport(
@@ -73,16 +73,13 @@ function scaleStrokesForExport(
   exportTeamMode: PdfTeamMode,
   drawTeamMode: PdfTeamMode
 ): Stroke[] {
-  if (exportTeamMode === drawTeamMode) return strokes;
-
-  const exportBoth = exportTeamMode === 'both';
-  const drawBoth = drawTeamMode === 'both';
-  const exportW = exportBoth ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
-  const exportH = exportBoth ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
-  const drawW = drawBoth ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
-  const drawH = drawBoth ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const exportW = HALF_RENDER_BASE;
+  const exportH = exportTeamMode === 'both' ? FULL_RENDER_H : HALF_RENDER_BASE;
+  const drawW = drawTeamMode === 'both' ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const drawH = drawTeamMode === 'both' ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
   const sx = exportW / drawW;
   const sy = exportH / drawH;
+  if (sx === 1 && sy === 1) return strokes;
 
   return strokes.map((stroke) => ({
     ...stroke,
@@ -94,10 +91,17 @@ function scaleStrokesForExport(
 async function waitForExportLayout(
   refs: (HTMLDivElement | null)[],
   expectedWidth: number,
-  maxFrames = 20
+  expectedHeight: number,
+  maxFrames = 40
 ) {
   for (let i = 0; i < maxFrames; i++) {
-    const ready = refs.every((node) => node && node.offsetWidth >= expectedWidth);
+    const ready = RECEIVE_VIEW_KEYS.every((_, index) => {
+      const node = refs[index];
+      if (!node) return false;
+      const w = node.offsetWidth;
+      const h = node.offsetHeight;
+      return Math.abs(w - expectedWidth) <= 2 && Math.abs(h - expectedHeight) <= 4;
+    });
     if (ready) return;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
@@ -249,9 +253,7 @@ function CourtEditor() {
   // ── Dialogs & feedback
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showPdfExportDialog, setShowPdfExportDialog] = useState(false);
-  const [pdfExportOptions, setPdfExportOptions] = useState<PdfExportOptions>(
-    DEFAULT_PDF_EXPORT_OPTIONS
-  );
+  const [activeExport, setActiveExport] = useState<PdfExportOptions | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     variant: 'success' | 'error';
@@ -636,47 +638,55 @@ function CourtEditor() {
   // ─── PDF export ────────────────────────────────────────────────────────────
 
   const exportAllToPdf = async (options: PdfExportOptions) => {
+    exportRefs.current = [];
+
     flushSync(() => {
-      setPdfExportOptions(options);
+      setActiveExport(options);
     });
 
-    const { pageWidth: expectedWidth, pageHeight: expectedHeight } =
-      getExportPageDimensions(options.teamMode);
+    const { pageWidth, pageHeight } = getExportPageDimensions(options.teamMode);
 
-    await waitForExportLayout(exportRefs.current, expectedWidth);
+    await waitForExportLayout(exportRefs.current, pageWidth, pageHeight);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     let pdf: jsPDF | null = null;
 
-    for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i++) {
-      const node = exportRefs.current[i];
-      if (!node) continue;
-      try {
-        const pageWidth = node.offsetWidth || expectedWidth;
-        const pageHeight = node.offsetHeight || expectedHeight;
-        const dataUrl = await toJpeg(node, {
-          quality: 0.92,
-          pixelRatio: 1,
-          backgroundColor: '#f8fafc',
-        });
-        if (!pdf) {
-          pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [pageWidth, pageHeight],
+    try {
+      for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i++) {
+        const node = exportRefs.current[i];
+        if (!node) continue;
+        try {
+          const canvas = await toCanvas(node, {
+            pixelRatio: 1,
+            backgroundColor: '#f8fafc',
+            width: pageWidth,
+            height: pageHeight,
+            canvasWidth: pageWidth,
+            canvasHeight: pageHeight,
           });
-        } else {
-          pdf.addPage([pageWidth, pageHeight]);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          if (!pdf) {
+            pdf = new jsPDF({
+              orientation: 'portrait',
+              unit: 'px',
+              format: [pageWidth, pageHeight],
+            });
+          } else {
+            pdf.addPage([pageWidth, pageHeight]);
+          }
+          pdf.addImage(dataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
+        } catch (err) {
+          console.error(`Export failed for rotation ${i + 1}:`, err);
         }
-        pdf.addImage(dataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
-      } catch (err) {
-        console.error(`Export failed for rotation ${i + 1}:`, err);
       }
-    }
 
-    setPdfExportOptions(DEFAULT_PDF_EXPORT_OPTIONS);
-
-    if (pdf) {
-      pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
+      if (pdf) {
+        pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
+      }
+    } finally {
+      flushSync(() => {
+        setActiveExport(null);
+      });
     }
   };
 
@@ -850,139 +860,143 @@ function CourtEditor() {
         onClose={() => setEditTarget(null)}
       />
 
-      {createPortal(
-        <div
-          style={{
-            position: 'absolute',
-            left: -9999,
-            top: 0,
-            pointerEvents: 'none',
-            overflow: 'visible',
-          }}
-        >
-          {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
-          const serveView = `S${getRotationNumber(receiveView)}` as RotationViewKey;
-          const { homeVisible: exportHomeVisible, awayVisible: exportAwayVisible } =
-            teamModeToVisibility(pdfExportOptions.teamMode);
-          const rawReceiveStrokes = pdfExportOptions.includeAnnotations
-            ? (annotationStrokes[makeComboKey(receiveView, receiveView)] ?? [])
-            : [];
-          const rawServeStrokes = pdfExportOptions.includeAnnotations
-            ? (annotationStrokes[makeComboKey(serveView, serveView)] ?? [])
-            : [];
-          const drawTeamMode = editorTeamMode(homeVisible, awayVisible);
-          const receiveStrokes = scaleStrokesForExport(
-            rawReceiveStrokes,
-            pdfExportOptions.teamMode,
-            drawTeamMode
-          );
-          const serveStrokes = scaleStrokesForExport(
-            rawServeStrokes,
-            pdfExportOptions.teamMode,
-            drawTeamMode
-          );
-          return (
-            <div
-              key={receiveView}
-              ref={(el) => {
-                exportRefs.current[index] = el;
-              }}
-              style={{
-                width: 'fit-content',
-                backgroundColor: '#f8fafc',
-                padding: EXPORT_PADDING,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                overflow: 'visible',
-              }}
-            >
-              <div style={{ color: '#0b1c30', fontSize: 18, fontWeight: 700 }}>
-                {rotationTitle || 'Untitled'} — {receiveView}
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: EXPORT_GAP,
-                  overflow: 'visible',
-                }}
-              >
+      {activeExport &&
+        createPortal(
+          <div
+            style={{
+              position: 'absolute',
+              left: -9999,
+              top: 0,
+              pointerEvents: 'none',
+            }}
+          >
+            {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
+              const serveView = `S${getRotationNumber(receiveView)}` as RotationViewKey;
+              const { pageWidth, pageHeight } = getExportPageDimensions(
+                activeExport.teamMode
+              );
+              const { homeVisible: exportHomeVisible, awayVisible: exportAwayVisible } =
+                teamModeToVisibility(activeExport.teamMode);
+              const rawReceiveStrokes = activeExport.includeAnnotations
+                ? (annotationStrokes[makeComboKey(receiveView, receiveView)] ?? [])
+                : [];
+              const rawServeStrokes = activeExport.includeAnnotations
+                ? (annotationStrokes[makeComboKey(serveView, serveView)] ?? [])
+                : [];
+              const drawTeamMode = editorTeamMode(homeVisible, awayVisible);
+              const receiveStrokes = scaleStrokesForExport(
+                rawReceiveStrokes,
+                activeExport.teamMode,
+                drawTeamMode
+              );
+              const serveStrokes = scaleStrokesForExport(
+                rawServeStrokes,
+                activeExport.teamMode,
+                drawTeamMode
+              );
+              return (
                 <div
+                  key={receiveView}
+                  ref={(el) => {
+                    exportRefs.current[index] = el;
+                  }}
                   style={{
+                    width: pageWidth,
+                    height: pageHeight,
+                    boxSizing: 'border-box',
+                    backgroundColor: '#f8fafc',
+                    padding: EXPORT_PADDING,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 4,
-                    alignItems: 'center',
-                    overflow: 'visible',
-                    paddingBottom: 20,
+                    gap: 8,
+                    overflow: 'hidden',
                   }}
                 >
-                  <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
-                    {receiveView}
+                  <div style={{ color: '#0b1c30', fontSize: 18, fontWeight: 700 }}>
+                    {rotationTitle || 'Untitled'} — {receiveView}
                   </div>
-                  <Court
-                    forExport
-                    homePlayers={home.rotations[receiveView]}
-                    awayPlayers={away.rotations[receiveView]}
-                    homeColor={home.color}
-                    awayColor={away.color}
-                    setHomePlayers={() => {}}
-                    setAwayPlayers={() => {}}
-                    homeViolatingIds={[]}
-                    awayViolatingIds={[]}
-                    strokes={receiveStrokes}
-                    setStrokes={() => {}}
-                    currentTool="none"
-                    homeVisible={exportHomeVisible}
-                    awayVisible={exportAwayVisible}
-                    homePlayersVisible={true}
-                    awayPlayersVisible={true}
-                    homeLabel={home.name}
-                    awayLabel={away.name}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    alignItems: 'center',
-                    overflow: 'visible',
-                    paddingBottom: 20,
-                  }}
-                >
-                  <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
-                    {serveView}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      gap: EXPORT_GAP,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        alignItems: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
+                        {receiveView}
+                      </div>
+                      <Court
+                        forExport
+                        homePlayers={home.rotations[receiveView]}
+                        awayPlayers={away.rotations[receiveView]}
+                        homeColor={home.color}
+                        awayColor={away.color}
+                        setHomePlayers={() => {}}
+                        setAwayPlayers={() => {}}
+                        homeViolatingIds={[]}
+                        awayViolatingIds={[]}
+                        strokes={receiveStrokes}
+                        setStrokes={() => {}}
+                        currentTool="none"
+                        homeVisible={exportHomeVisible}
+                        awayVisible={exportAwayVisible}
+                        homePlayersVisible={true}
+                        awayPlayersVisible={true}
+                        homeLabel={home.name}
+                        awayLabel={away.name}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        alignItems: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
+                        {serveView}
+                      </div>
+                      <Court
+                        forExport
+                        homePlayers={home.rotations[serveView]}
+                        awayPlayers={away.rotations[serveView]}
+                        homeColor={home.color}
+                        awayColor={away.color}
+                        setHomePlayers={() => {}}
+                        setAwayPlayers={() => {}}
+                        homeViolatingIds={[]}
+                        awayViolatingIds={[]}
+                        strokes={serveStrokes}
+                        setStrokes={() => {}}
+                        currentTool="none"
+                        homeVisible={exportHomeVisible}
+                        awayVisible={exportAwayVisible}
+                        homePlayersVisible={true}
+                        awayPlayersVisible={true}
+                        homeLabel={home.name}
+                        awayLabel={away.name}
+                      />
+                    </div>
                   </div>
-                  <Court
-                    forExport
-                    homePlayers={home.rotations[serveView]}
-                    awayPlayers={away.rotations[serveView]}
-                    homeColor={home.color}
-                    awayColor={away.color}
-                    setHomePlayers={() => {}}
-                    setAwayPlayers={() => {}}
-                    homeViolatingIds={[]}
-                    awayViolatingIds={[]}
-                    strokes={serveStrokes}
-                    setStrokes={() => {}}
-                    currentTool="none"
-                    homeVisible={exportHomeVisible}
-                    awayVisible={exportAwayVisible}
-                    homePlayersVisible={true}
-                    awayPlayersVisible={true}
-                    homeLabel={home.name}
-                    awayLabel={away.name}
-                  />
                 </div>
-              </div>
-            </div>
-          );
-          })}
-        </div>,
-        document.body
-      )}
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

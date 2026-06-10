@@ -229,10 +229,18 @@ export default function Court({
   awayLabel = 'AWAY',
   forExport = false,
 }: Props) {
-  const bothVisible = homeVisible && awayVisible;
-  const halfSize = bothVisible ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const bothTeamsShowing = homeVisible && awayVisible;
+  // Export always uses compact dual-layout pixels; editor single-team uses 2× zoom.
+  const useDualLayout = forExport || bothTeamsShowing;
+  const singleTeamExport = forExport && !bothTeamsShowing;
+  const halfSize = useDualLayout ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
   const courtWidth = halfSize;
-  const courtHeight = bothVisible ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const courtHeight = singleTeamExport
+    ? HALF_RENDER_BASE
+    : useDualLayout
+      ? FULL_RENDER_H
+      : SINGLE_RENDER_SIZE;
+  const bothVisible = bothTeamsShowing;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { delta, active } = event;
@@ -274,8 +282,8 @@ export default function Court({
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
-        className={`relative rounded-xl shadow-2xl overflow-visible border-4 border-white flex flex-col shrink-0 ${
-          forExport ? '' : 'transition-[width,height] duration-300 ease-out'
+        className={`relative rounded-xl overflow-visible border-4 border-white flex flex-col shrink-0 ${
+          forExport ? 'shadow-none' : 'shadow-2xl transition-[width,height] duration-300 ease-out'
         }`}
         style={{ width: courtWidth, height: courtHeight }}
       >
