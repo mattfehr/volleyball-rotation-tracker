@@ -46,10 +46,13 @@ export default function TopNavBar({
         <div className="bg-white/10 p-1 rounded-full flex items-center gap-1">
           <button
             onClick={onToggleHome}
+            disabled={homeVisible && !awayVisible}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-              homeVisible
-                ? 'bg-[#f57c00] text-white shadow-sm'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
+              homeVisible && !awayVisible
+                ? 'bg-[#f57c00] text-white shadow-sm opacity-50 cursor-not-allowed'
+                : homeVisible
+                  ? 'bg-[#f57c00] text-white shadow-sm'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">
@@ -59,10 +62,13 @@ export default function TopNavBar({
           </button>
           <button
             onClick={onToggleAway}
+            disabled={awayVisible && !homeVisible}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-              awayVisible
-                ? 'bg-[#f57c00] text-white shadow-sm'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
+              awayVisible && !homeVisible
+                ? 'bg-[#f57c00] text-white shadow-sm opacity-50 cursor-not-allowed'
+                : awayVisible
+                  ? 'bg-[#f57c00] text-white shadow-sm'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">
