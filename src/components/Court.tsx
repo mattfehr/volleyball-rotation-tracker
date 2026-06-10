@@ -9,14 +9,12 @@ export const COURT_LOCAL_W = 900;
 export const COURT_LOCAL_H = 900;
 
 // Regulation: half-court 29.5' × 29.5' (9 m × 9 m); full court 29.5' × 59' (9 m × 18 m)
-// Render at 340 px per 29.5' → each half is a 340 × 340 square
-const RENDER_W = 340;
-const RENDER_HALF_H = RENDER_W;
-const RENDER_FULL_H = RENDER_HALF_H * 2;
+// Dual view: each half rendered at HALF_RENDER_BASE; single view scales 2× to fill the canvas
+const HALF_RENDER_BASE = 290;
+const FULL_RENDER_H = HALF_RENDER_BASE * 2;
+const SINGLE_RENDER_SIZE = FULL_RENDER_H;
 const ATTACK_LINE_FROM_NET = '33.333%'; // 3 m / 9 m from the net
 const TOKEN_RATIO = 0.12;
-// Token wrapper uses scale(RENDER_W / LOCAL_W); compensate so text renders at target screen px
-const SCREEN_TEXT_SCALE = COURT_LOCAL_W / RENDER_W;
 const CIRCLE_FONT_SCREEN = 14;
 const PILL_FONT_SCREEN = 8;
 const PILL_OFFSET_SCREEN = 18;
@@ -42,30 +40,37 @@ export type Props = {
 // ─── Coordinate mapping ───────────────────────────────────────────────────────
 //
 // Each team keeps coords in the 900×900 local space (9 m × 9 m half-court).
-// Always mapped to a square render half (RENDER_W × RENDER_HALF_H):
-//   Home (not mirrored): render_x = (x / LOCAL_W) * renderW, render_y = (y / LOCAL_H) * renderH
-//   Away (mirrored):     render_x = ((LOCAL_W - x) / LOCAL_W) * renderW,
-//                        render_y = ((LOCAL_H - y) / LOCAL_H) * renderH
+// Mapped to a square render half (halfSize × halfSize):
+//   Home (not mirrored): render_x = (x / LOCAL_W) * halfSize, render_y = (y / LOCAL_H) * halfSize
+//   Away (mirrored):     render_x = ((LOCAL_W - x) / LOCAL_W) * halfSize,
+//                        render_y = ((LOCAL_H - y) / LOCAL_H) * halfSize
 
 function mapLocalToRender(
   x: number,
   y: number,
   mirrored: boolean,
-  renderW: number,
-  renderH: number
+  halfSize: number
 ) {
   const rx = mirrored
-    ? ((COURT_LOCAL_W - x) / COURT_LOCAL_W) * renderW
-    : (x / COURT_LOCAL_W) * renderW;
+    ? ((COURT_LOCAL_W - x) / COURT_LOCAL_W) * halfSize
+    : (x / COURT_LOCAL_W) * halfSize;
   const ry = mirrored
-    ? ((COURT_LOCAL_H - y) / COURT_LOCAL_H) * renderH
-    : (y / COURT_LOCAL_H) * renderH;
+    ? ((COURT_LOCAL_H - y) / COURT_LOCAL_H) * halfSize
+    : (y / COURT_LOCAL_H) * halfSize;
   return { rx, ry };
 }
 
 // ─── Fit-to-circle label ─────────────────────────────────────────────────────
 
-function FitCircleText({ text, maxFontSize }: { text: string; maxFontSize: number }) {
+function FitCircleText({
+  text,
+  maxFontSize,
+  minFontSize,
+}: {
+  text: string;
+  maxFontSize: number;
+  minFontSize: number;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [fontSize, setFontSize] = useState(maxFontSize);
@@ -75,7 +80,6 @@ function FitCircleText({ text, maxFontSize }: { text: string; maxFontSize: numbe
     const el = textRef.current;
     if (!container || !el) return;
 
-    const minFontSize = Math.round(8 * SCREEN_TEXT_SCALE);
     let size = maxFontSize;
     const maxWidth = container.clientWidth * 0.82;
     const maxHeight = container.clientHeight * 0.82;
@@ -86,7 +90,7 @@ function FitCircleText({ text, maxFontSize }: { text: string; maxFontSize: numbe
       el.style.fontSize = `${size}px`;
     }
     setFontSize(size);
-  }, [text, maxFontSize]);
+  }, [text, maxFontSize, minFontSize]);
 
   return (
     <div
@@ -111,6 +115,7 @@ type TokenProps = {
   teamColor: string;
   isViolating: boolean;
   mirrored: boolean;
+  halfSize: number;
 };
 
 function DraggablePlayer({
@@ -118,19 +123,15 @@ function DraggablePlayer({
   teamColor,
   isViolating,
   mirrored,
+  halfSize,
 }: TokenProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
   });
 
-  const scaleX = RENDER_W / COURT_LOCAL_W;
-  const { rx: baseX, ry: baseY } = mapLocalToRender(
-    player.x,
-    player.y,
-    mirrored,
-    RENDER_W,
-    RENDER_HALF_H
-  );
+  const coordScale = halfSize / COURT_LOCAL_W;
+  const textScale = COURT_LOCAL_W / halfSize;
+  const { rx: baseX, ry: baseY } = mapLocalToRender(player.x, player.y, mirrored, halfSize);
 
   const liveDx = transform ? transform.x : 0;
   const liveDy = transform ? transform.y : 0;
@@ -141,7 +142,7 @@ function DraggablePlayer({
     position: 'absolute',
     left: baseX + liveDx,
     top: baseY + liveDy,
-    transform: `translate(-50%, -50%) scale(${scaleX})`,
+    transform: `translate(-50%, -50%) scale(${coordScale})`,
     transformOrigin: 'center',
     width: tokenSize,
     height: tokenSize,
@@ -149,6 +150,8 @@ function DraggablePlayer({
   };
 
   const circleText = player.name || player.label;
+  const maxFontSize = CIRCLE_FONT_SCREEN * textScale;
+  const minFontSize = Math.round(8 * textScale);
 
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} style={style}>
@@ -157,17 +160,14 @@ function DraggablePlayer({
           ${isViolating ? 'ring-4 ring-[#ef4444] animate-pulse' : ''}`}
         style={{ backgroundColor: teamColor }}
       >
-        <FitCircleText
-          text={circleText}
-          maxFontSize={CIRCLE_FONT_SCREEN * SCREEN_TEXT_SCALE}
-        />
+        <FitCircleText text={circleText} maxFontSize={maxFontSize} minFontSize={minFontSize} />
       </div>
       {player.label && (
         <span
           className="absolute left-1/2 text-white font-bold px-1 py-0.5 rounded shadow-sm whitespace-nowrap pointer-events-none"
           style={{
-            fontSize: PILL_FONT_SCREEN * SCREEN_TEXT_SCALE,
-            bottom: -PILL_OFFSET_SCREEN * SCREEN_TEXT_SCALE,
+            fontSize: PILL_FONT_SCREEN * textScale,
+            bottom: -PILL_OFFSET_SCREEN * textScale,
             transform: 'translateX(-50%)',
             backgroundColor: '#0b1c30',
           }}
@@ -197,15 +197,16 @@ export default function Court({
   awayVisible,
 }: Props) {
   const bothVisible = homeVisible && awayVisible;
-  // Dual view: two stacked squares (59' × 29.5'); single view: one square (29.5' × 29.5')
-  const courtHeight = bothVisible ? RENDER_FULL_H : RENDER_HALF_H;
+  const halfSize = bothVisible ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const courtWidth = halfSize;
+  const courtHeight = bothVisible ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { delta, active } = event;
     const id = active.id as string;
 
-    const scaleX = COURT_LOCAL_W / RENDER_W;
-    const scaleY = COURT_LOCAL_H / RENDER_HALF_H;
+    const scaleX = COURT_LOCAL_W / halfSize;
+    const scaleY = COURT_LOCAL_H / halfSize;
 
     if (homePlayers.some((p) => p.id === id)) {
       setHomePlayers((prev) =>
@@ -235,24 +236,27 @@ export default function Court({
   };
 
   const isDrawing = currentTool !== 'none';
+  const watermarkSize = bothVisible ? 'text-5xl' : 'text-8xl';
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
-        className="relative rounded-xl shadow-2xl overflow-visible border-4 border-white flex flex-col shrink-0"
-        style={{ width: RENDER_W, height: courtHeight }}
+        className="relative rounded-xl shadow-2xl overflow-visible border-4 border-white flex flex-col shrink-0 transition-[width,height] duration-300 ease-out"
+        style={{ width: courtWidth, height: courtHeight }}
       >
         {awayVisible && (
           <div
             className="court-gradient relative overflow-hidden"
-            style={{ width: RENDER_W, height: RENDER_HALF_H }}
+            style={{ width: halfSize, height: halfSize }}
           >
             <div
               className="absolute left-0 w-full h-[2px] bg-white/40"
               style={{ bottom: ATTACK_LINE_FROM_NET }}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-              <span className="text-white/10 font-black uppercase tracking-widest text-5xl">
+              <span
+                className={`text-white/10 font-black uppercase tracking-widest ${watermarkSize}`}
+              >
                 AWAY
               </span>
             </div>
@@ -263,6 +267,7 @@ export default function Court({
                 teamColor={awayColor}
                 isViolating={awayViolatingIds.includes(player.id)}
                 mirrored={true}
+                halfSize={halfSize}
               />
             ))}
           </div>
@@ -271,14 +276,16 @@ export default function Court({
         {homeVisible && (
           <div
             className="court-gradient relative overflow-hidden"
-            style={{ width: RENDER_W, height: RENDER_HALF_H }}
+            style={{ width: halfSize, height: halfSize }}
           >
             <div
               className="absolute left-0 w-full h-[2px] bg-white/40"
               style={{ top: ATTACK_LINE_FROM_NET }}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-              <span className="text-white/10 font-black uppercase tracking-widest text-5xl">
+              <span
+                className={`text-white/10 font-black uppercase tracking-widest ${watermarkSize}`}
+              >
                 HOME
               </span>
             </div>
@@ -289,6 +296,7 @@ export default function Court({
                 teamColor={homeColor}
                 isViolating={homeViolatingIds.includes(player.id)}
                 mirrored={false}
+                halfSize={halfSize}
               />
             ))}
           </div>
@@ -297,13 +305,13 @@ export default function Court({
         {bothVisible && (
           <div
             className="absolute left-0 w-full h-1 bg-white z-20 pointer-events-none"
-            style={{ top: RENDER_HALF_H, transform: 'translateY(-50%)' }}
+            style={{ top: HALF_RENDER_BASE, transform: 'translateY(-50%)' }}
           />
         )}
 
         <div
           className={`absolute inset-0 z-30 ${isDrawing ? '' : 'pointer-events-none'}`}
-          style={{ width: RENDER_W, height: courtHeight }}
+          style={{ width: courtWidth, height: courtHeight }}
         >
           <CanvasOverlay
             strokes={strokes}
