@@ -534,8 +534,8 @@ function CourtEditor() {
         onTitleChange={setRotationTitle}
         homeVisible={homeVisible}
         awayVisible={awayVisible}
-        onToggleHome={() => setHomeVisible((v) => (v ? awayVisible : true))}
-        onToggleAway={() => setAwayVisible((v) => (v ? homeVisible : true))}
+        onToggleHome={() => setHomeVisible((v) => !v || !awayVisible)}
+        onToggleAway={() => setAwayVisible((v) => !v || !homeVisible)}
         onPdfExport={exportAllToPdf}
         onSave={saveToCloud}
         onExit={() => navigate('/library')}

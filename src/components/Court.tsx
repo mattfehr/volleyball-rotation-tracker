@@ -8,9 +8,12 @@ import CanvasOverlay, { type Stroke } from './CanvasOverlay';
 export const COURT_LOCAL_W = 900;
 export const COURT_LOCAL_H = 900;
 
+// Regulation: half-court 29.5' × 29.5' (9 m × 9 m); full court 29.5' × 59' (9 m × 18 m)
+// Render at 340 px per 29.5' → each half is a 340 × 340 square
 const RENDER_W = 340;
-const RENDER_HALF_H = 340;
+const RENDER_HALF_H = RENDER_W;
 const RENDER_FULL_H = RENDER_HALF_H * 2;
+const ATTACK_LINE_FROM_NET = '33.333%'; // 3 m / 9 m from the net
 const TOKEN_RATIO = 0.12;
 // Token wrapper uses scale(RENDER_W / LOCAL_W); compensate so text renders at target screen px
 const SCREEN_TEXT_SCALE = COURT_LOCAL_W / RENDER_W;
@@ -38,8 +41,8 @@ export type Props = {
 
 // ─── Coordinate mapping ───────────────────────────────────────────────────────
 //
-// Each team keeps coords in the 900×900 local space so existing logic is intact.
-// Render mapping scales local coords to the current render area (half or full):
+// Each team keeps coords in the 900×900 local space (9 m × 9 m half-court).
+// Always mapped to a square render half (RENDER_W × RENDER_HALF_H):
 //   Home (not mirrored): render_x = (x / LOCAL_W) * renderW, render_y = (y / LOCAL_H) * renderH
 //   Away (mirrored):     render_x = ((LOCAL_W - x) / LOCAL_W) * renderW,
 //                        render_y = ((LOCAL_H - y) / LOCAL_H) * renderH
@@ -108,8 +111,6 @@ type TokenProps = {
   teamColor: string;
   isViolating: boolean;
   mirrored: boolean;
-  renderH: number;
-  tokenScale: number;
 };
 
 function DraggablePlayer({
@@ -117,8 +118,6 @@ function DraggablePlayer({
   teamColor,
   isViolating,
   mirrored,
-  renderH,
-  tokenScale,
 }: TokenProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
@@ -130,13 +129,13 @@ function DraggablePlayer({
     player.y,
     mirrored,
     RENDER_W,
-    renderH
+    RENDER_HALF_H
   );
 
   const liveDx = transform ? transform.x : 0;
   const liveDy = transform ? transform.y : 0;
 
-  const tokenSize = COURT_LOCAL_W * TOKEN_RATIO * tokenScale;
+  const tokenSize = COURT_LOCAL_W * TOKEN_RATIO;
 
   const style: React.CSSProperties = {
     position: 'absolute',
@@ -198,16 +197,15 @@ export default function Court({
   awayVisible,
 }: Props) {
   const bothVisible = homeVisible && awayVisible;
-  const renderH = bothVisible ? RENDER_HALF_H : RENDER_FULL_H;
-  const courtHeight = bothVisible ? RENDER_FULL_H + 4 : RENDER_FULL_H;
-  const tokenScale = bothVisible ? 1 : 2;
+  // Dual view: two stacked squares (59' × 29.5'); single view: one square (29.5' × 29.5')
+  const courtHeight = bothVisible ? RENDER_FULL_H : RENDER_HALF_H;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { delta, active } = event;
     const id = active.id as string;
 
     const scaleX = COURT_LOCAL_W / RENDER_W;
-    const scaleY = COURT_LOCAL_H / renderH;
+    const scaleY = COURT_LOCAL_H / RENDER_HALF_H;
 
     if (homePlayers.some((p) => p.id === id)) {
       setHomePlayers((prev) =>
@@ -247,9 +245,12 @@ export default function Court({
         {awayVisible && (
           <div
             className="court-gradient relative overflow-hidden"
-            style={{ width: RENDER_W, height: renderH }}
+            style={{ width: RENDER_W, height: RENDER_HALF_H }}
           >
-            <div className="absolute top-[60%] left-0 w-full h-[2px] bg-white/40" />
+            <div
+              className="absolute left-0 w-full h-[2px] bg-white/40"
+              style={{ bottom: ATTACK_LINE_FROM_NET }}
+            />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               <span className="text-white/10 font-black uppercase tracking-widest text-5xl">
                 AWAY
@@ -262,23 +263,20 @@ export default function Court({
                 teamColor={awayColor}
                 isViolating={awayViolatingIds.includes(player.id)}
                 mirrored={true}
-                renderH={renderH}
-                tokenScale={tokenScale}
               />
             ))}
           </div>
         )}
 
-        {bothVisible && (
-          <div className="h-1 bg-white z-20 shrink-0" style={{ width: RENDER_W }} />
-        )}
-
         {homeVisible && (
           <div
             className="court-gradient relative overflow-hidden"
-            style={{ width: RENDER_W, height: renderH }}
+            style={{ width: RENDER_W, height: RENDER_HALF_H }}
           >
-            <div className="absolute bottom-[60%] left-0 w-full h-[2px] bg-white/40" />
+            <div
+              className="absolute left-0 w-full h-[2px] bg-white/40"
+              style={{ top: ATTACK_LINE_FROM_NET }}
+            />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
               <span className="text-white/10 font-black uppercase tracking-widest text-5xl">
                 HOME
@@ -291,11 +289,16 @@ export default function Court({
                 teamColor={homeColor}
                 isViolating={homeViolatingIds.includes(player.id)}
                 mirrored={false}
-                renderH={renderH}
-                tokenScale={tokenScale}
               />
             ))}
           </div>
+        )}
+
+        {bothVisible && (
+          <div
+            className="absolute left-0 w-full h-1 bg-white z-20 pointer-events-none"
+            style={{ top: RENDER_HALF_H, transform: 'translateY(-50%)' }}
+          />
         )}
 
         <div
