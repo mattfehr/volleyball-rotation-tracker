@@ -10,9 +10,9 @@ export { COURT_LOCAL_H, COURT_LOCAL_W };
 
 // Regulation: half-court 29.5' × 29.5' (9 m × 9 m); full court 29.5' × 59' (9 m × 18 m)
 // Dual view: each half rendered at HALF_RENDER_BASE; single view scales 2× to fill the canvas
-const HALF_RENDER_BASE = 290;
-const FULL_RENDER_H = HALF_RENDER_BASE * 2;
-const SINGLE_RENDER_SIZE = FULL_RENDER_H;
+export const HALF_RENDER_BASE = 290;
+export const FULL_RENDER_H = HALF_RENDER_BASE * 2;
+export const SINGLE_RENDER_SIZE = FULL_RENDER_H;
 const ATTACK_LINE_FROM_NET = '33.333%'; // 3 m / 9 m from the net
 const TOKEN_RATIO = 0.12;
 const CIRCLE_FONT_SCREEN = 14;
@@ -39,6 +39,8 @@ export type Props = {
   awayPlayersVisible?: boolean;
   homeLabel?: string;
   awayLabel?: string;
+  /** Disables transitions and uses flat sizing for reliable image capture. */
+  forExport?: boolean;
 };
 
 // ─── Coordinate mapping ───────────────────────────────────────────────────────
@@ -122,6 +124,7 @@ type TokenProps = {
   flipX: boolean;
   flipY: boolean;
   halfSize: number;
+  forExport?: boolean;
 };
 
 function DraggablePlayer({
@@ -131,6 +134,7 @@ function DraggablePlayer({
   flipX,
   flipY,
   halfSize,
+  forExport = false,
 }: TokenProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: player.id,
@@ -150,21 +154,32 @@ function DraggablePlayer({
   const liveDy = transform ? transform.y : 0;
 
   const tokenSize = COURT_LOCAL_W * TOKEN_RATIO;
+  const tokenRenderSize = tokenSize * coordScale;
 
-  const style: React.CSSProperties = {
-    position: 'absolute',
-    left: baseX + liveDx,
-    top: baseY + liveDy,
-    transform: `translate(-50%, -50%) scale(${coordScale})`,
-    transformOrigin: 'center',
-    width: tokenSize,
-    height: tokenSize,
-    zIndex: 10,
-  };
+  const style: React.CSSProperties = forExport
+    ? {
+        position: 'absolute',
+        left: baseX + liveDx,
+        top: baseY + liveDy,
+        transform: 'translate(-50%, -50%)',
+        width: tokenRenderSize,
+        height: tokenRenderSize,
+        zIndex: 10,
+      }
+    : {
+        position: 'absolute',
+        left: baseX + liveDx,
+        top: baseY + liveDy,
+        transform: `translate(-50%, -50%) scale(${coordScale})`,
+        transformOrigin: 'center',
+        width: tokenSize,
+        height: tokenSize,
+        zIndex: 10,
+      };
 
   const circleText = player.name || player.label;
-  const maxFontSize = CIRCLE_FONT_SCREEN * textScale;
-  const minFontSize = Math.round(8 * textScale);
+  const maxFontSize = forExport ? CIRCLE_FONT_SCREEN : CIRCLE_FONT_SCREEN * textScale;
+  const minFontSize = forExport ? 8 : Math.round(8 * textScale);
 
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} style={style}>
@@ -179,8 +194,8 @@ function DraggablePlayer({
         <span
           className="absolute left-1/2 text-white font-bold px-1 py-0.5 rounded shadow-sm whitespace-nowrap pointer-events-none"
           style={{
-            fontSize: PILL_FONT_SCREEN * textScale,
-            bottom: -PILL_OFFSET_SCREEN * textScale,
+            fontSize: forExport ? PILL_FONT_SCREEN : PILL_FONT_SCREEN * textScale,
+            bottom: forExport ? -PILL_OFFSET_SCREEN : -PILL_OFFSET_SCREEN * textScale,
             transform: 'translateX(-50%)',
             backgroundColor: '#0b1c30',
           }}
@@ -212,6 +227,7 @@ export default function Court({
   awayPlayersVisible = true,
   homeLabel = 'HOME',
   awayLabel = 'AWAY',
+  forExport = false,
 }: Props) {
   const bothVisible = homeVisible && awayVisible;
   const halfSize = bothVisible ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
@@ -258,12 +274,14 @@ export default function Court({
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
-        className="relative rounded-xl shadow-2xl overflow-visible border-4 border-white flex flex-col shrink-0 transition-[width,height] duration-300 ease-out"
+        className={`relative rounded-xl shadow-2xl overflow-visible border-4 border-white flex flex-col shrink-0 ${
+          forExport ? '' : 'transition-[width,height] duration-300 ease-out'
+        }`}
         style={{ width: courtWidth, height: courtHeight }}
       >
         {awayVisible && (
           <div
-            className="court-gradient relative overflow-hidden"
+            className={`court-gradient relative ${forExport ? 'overflow-visible' : 'overflow-hidden'}`}
             style={{ width: halfSize, height: halfSize }}
           >
             <div
@@ -286,6 +304,7 @@ export default function Court({
                 flipX={true}
                 flipY={true}
                 halfSize={halfSize}
+                forExport={forExport}
               />
             ))}
           </div>
@@ -293,7 +312,7 @@ export default function Court({
 
         {homeVisible && (
           <div
-            className="court-gradient relative overflow-hidden"
+            className={`court-gradient relative ${forExport ? 'overflow-visible' : 'overflow-hidden'}`}
             style={{ width: halfSize, height: halfSize }}
           >
             <div
@@ -316,6 +335,7 @@ export default function Court({
                 flipX={false}
                 flipY={false}
                 halfSize={halfSize}
+                forExport={forExport}
               />
             ))}
           </div>
@@ -333,6 +353,7 @@ export default function Court({
           style={{ width: courtWidth, height: courtHeight }}
         >
           <CanvasOverlay
+            key={`${courtWidth}x${courtHeight}`}
             strokes={strokes}
             setStrokes={setStrokes}
             currentTool={currentTool}

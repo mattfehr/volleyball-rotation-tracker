@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import { v4 as uuid } from 'uuid';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import type { Player } from '../models/Player';
 import type { Team } from '../models/Team';
-import Court from './Court';
+import Court, { FULL_RENDER_H, HALF_RENDER_BASE, SINGLE_RENDER_SIZE } from './Court';
 import type { Stroke } from './CanvasOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { getRotationSetById } from '../lib/firestore';
@@ -24,10 +25,83 @@ import TeamSidebar from './editor/TeamSidebar';
 import ToolPalette from './editor/ToolPalette';
 import PlayerEditModal from './editor/PlayerEditModal';
 import ConfirmDialog from './editor/ConfirmDialog';
+import PdfExportDialog, {
+  DEFAULT_PDF_EXPORT_OPTIONS,
+  type PdfExportOptions,
+  type PdfTeamMode,
+} from './editor/PdfExportDialog';
 import Toast from './editor/Toast';
 import { applyZonePosition, type CourtSide } from '../lib/courtZones';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function teamModeToVisibility(teamMode: PdfTeamMode) {
+  return {
+    homeVisible: teamMode === 'both' || teamMode === 'home',
+    awayVisible: teamMode === 'both' || teamMode === 'away',
+  };
+}
+
+function editorTeamMode(homeVisible: boolean, awayVisible: boolean): PdfTeamMode {
+  if (homeVisible && awayVisible) return 'both';
+  if (homeVisible) return 'home';
+  return 'away';
+}
+
+const EXPORT_PADDING = 16;
+const EXPORT_GAP = 16;
+const EXPORT_TITLE_HEIGHT = 26;
+const EXPORT_LABEL_HEIGHT = 18;
+
+function getExportPageDimensions(teamMode: PdfTeamMode) {
+  const bothTeams = teamMode === 'both';
+  const courtW = bothTeams ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const courtH = bothTeams ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const pageWidth = EXPORT_PADDING * 2 + courtW * 2 + EXPORT_GAP;
+  const pageHeight =
+    EXPORT_PADDING * 2 +
+    EXPORT_TITLE_HEIGHT +
+    8 +
+    EXPORT_LABEL_HEIGHT +
+    4 +
+    courtH;
+  return { pageWidth, pageHeight };
+}
+
+function scaleStrokesForExport(
+  strokes: Stroke[],
+  exportTeamMode: PdfTeamMode,
+  drawTeamMode: PdfTeamMode
+): Stroke[] {
+  if (exportTeamMode === drawTeamMode) return strokes;
+
+  const exportBoth = exportTeamMode === 'both';
+  const drawBoth = drawTeamMode === 'both';
+  const exportW = exportBoth ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const exportH = exportBoth ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const drawW = drawBoth ? HALF_RENDER_BASE : SINGLE_RENDER_SIZE;
+  const drawH = drawBoth ? FULL_RENDER_H : SINGLE_RENDER_SIZE;
+  const sx = exportW / drawW;
+  const sy = exportH / drawH;
+
+  return strokes.map((stroke) => ({
+    ...stroke,
+    width: stroke.width * sx,
+    points: stroke.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
+  }));
+}
+
+async function waitForExportLayout(
+  refs: (HTMLDivElement | null)[],
+  expectedWidth: number,
+  maxFrames = 20
+) {
+  for (let i = 0; i < maxFrames; i++) {
+    const ready = refs.every((node) => node && node.offsetWidth >= expectedWidth);
+    if (ready) return;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+}
 
 function makeEmptyRotations() {
   return createRotationViewRecord<Player[]>(() => []);
@@ -174,7 +248,10 @@ function CourtEditor() {
 
   // ── Dialogs & feedback
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [showPdfConfirm, setShowPdfConfirm] = useState(false);
+  const [showPdfExportDialog, setShowPdfExportDialog] = useState(false);
+  const [pdfExportOptions, setPdfExportOptions] = useState<PdfExportOptions>(
+    DEFAULT_PDF_EXPORT_OPTIONS
+  );
   const [toast, setToast] = useState<{
     message: string;
     variant: 'success' | 'error';
@@ -548,38 +625,59 @@ function CourtEditor() {
   };
 
   const handlePdfExportClick = () => {
-    setShowPdfConfirm(true);
+    setShowPdfExportDialog(true);
   };
 
-  const handlePdfExportConfirm = async () => {
-    setShowPdfConfirm(false);
-    await exportAllToPdf();
+  const handlePdfExportConfirm = async (options: PdfExportOptions) => {
+    setShowPdfExportDialog(false);
+    await exportAllToPdf(options);
   };
 
   // ─── PDF export ────────────────────────────────────────────────────────────
 
-  const exportAllToPdf = async () => {
-    const pageWidth = 680;
-    const pageHeight = 700;
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'px',
-      format: [pageWidth, pageHeight * RECEIVE_VIEW_KEYS.length],
+  const exportAllToPdf = async (options: PdfExportOptions) => {
+    flushSync(() => {
+      setPdfExportOptions(options);
     });
+
+    const { pageWidth: expectedWidth, pageHeight: expectedHeight } =
+      getExportPageDimensions(options.teamMode);
+
+    await waitForExportLayout(exportRefs.current, expectedWidth);
+
+    let pdf: jsPDF | null = null;
 
     for (let i = 0; i < RECEIVE_VIEW_KEYS.length; i++) {
       const node = exportRefs.current[i];
       if (!node) continue;
       try {
-        const dataUrl = await toPng(node);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+        const pageWidth = node.offsetWidth || expectedWidth;
+        const pageHeight = node.offsetHeight || expectedHeight;
+        const dataUrl = await toJpeg(node, {
+          quality: 0.92,
+          pixelRatio: 1,
+          backgroundColor: '#f8fafc',
+        });
+        if (!pdf) {
+          pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [pageWidth, pageHeight],
+          });
+        } else {
+          pdf.addPage([pageWidth, pageHeight]);
+        }
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
       } catch (err) {
         console.error(`Export failed for rotation ${i + 1}:`, err);
       }
     }
 
-    pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
+    setPdfExportOptions(DEFAULT_PDF_EXPORT_OPTIONS);
+
+    if (pdf) {
+      pdf.save(`${rotationTitle || 'Untitled Rotation'}(vbrt).pdf`);
+    }
   };
 
   // ─── Player edit modal ─────────────────────────────────────────────────────
@@ -724,15 +822,11 @@ function CourtEditor() {
         />
       )}
 
-      {showPdfConfirm && (
-        <ConfirmDialog
-          title="Export PDF"
-          message="Do you want to export the rotations as a PDF?"
-          confirmLabel="Yes"
-          cancelLabel="No"
-          showClose={false}
-          onConfirm={handlePdfExportConfirm}
-          onCancel={() => setShowPdfConfirm(false)}
+      {showPdfExportDialog && (
+        <PdfExportDialog
+          initialTeamMode={editorTeamMode(homeVisible, awayVisible)}
+          onExport={handlePdfExportConfirm}
+          onCancel={() => setShowPdfExportDialog(false)}
         />
       )}
 
@@ -756,10 +850,37 @@ function CourtEditor() {
         onClose={() => setEditTarget(null)}
       />
 
-      {/* Hidden export nodes for PDF */}
-      <div style={{ position: 'absolute', top: -9999, left: -9999, pointerEvents: 'none' }}>
-        {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
+      {createPortal(
+        <div
+          style={{
+            position: 'absolute',
+            left: -9999,
+            top: 0,
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
+          {RECEIVE_VIEW_KEYS.map((receiveView, index) => {
           const serveView = `S${getRotationNumber(receiveView)}` as RotationViewKey;
+          const { homeVisible: exportHomeVisible, awayVisible: exportAwayVisible } =
+            teamModeToVisibility(pdfExportOptions.teamMode);
+          const rawReceiveStrokes = pdfExportOptions.includeAnnotations
+            ? (annotationStrokes[makeComboKey(receiveView, receiveView)] ?? [])
+            : [];
+          const rawServeStrokes = pdfExportOptions.includeAnnotations
+            ? (annotationStrokes[makeComboKey(serveView, serveView)] ?? [])
+            : [];
+          const drawTeamMode = editorTeamMode(homeVisible, awayVisible);
+          const receiveStrokes = scaleStrokesForExport(
+            rawReceiveStrokes,
+            pdfExportOptions.teamMode,
+            drawTeamMode
+          );
+          const serveStrokes = scaleStrokesForExport(
+            rawServeStrokes,
+            pdfExportOptions.teamMode,
+            drawTeamMode
+          );
           return (
             <div
               key={receiveView}
@@ -767,40 +888,101 @@ function CourtEditor() {
                 exportRefs.current[index] = el;
               }}
               style={{
-                width: 680,
+                width: 'fit-content',
                 backgroundColor: '#f8fafc',
-                padding: 16,
+                padding: EXPORT_PADDING,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 8,
+                overflow: 'visible',
               }}
             >
               <div style={{ color: '#0b1c30', fontSize: 18, fontWeight: 700 }}>
-                {rotationTitle || 'Untitled'} — {receiveView} / {serveView}
+                {rotationTitle || 'Untitled'} — {receiveView}
               </div>
-              <Court
-                homePlayers={home.rotations[receiveView]}
-                awayPlayers={away.rotations[receiveView]}
-                homeColor={home.color}
-                awayColor={away.color}
-                setHomePlayers={() => {}}
-                setAwayPlayers={() => {}}
-                homeViolatingIds={[]}
-                awayViolatingIds={[]}
-                strokes={annotationStrokes[makeComboKey(receiveView, 'R1')] ?? []}
-                setStrokes={() => {}}
-                currentTool="none"
-                homeVisible={true}
-                awayVisible={true}
-                homePlayersVisible={true}
-                awayPlayersVisible={true}
-                homeLabel={home.name}
-                awayLabel={away.name}
-              />
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: EXPORT_GAP,
+                  overflow: 'visible',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    alignItems: 'center',
+                    overflow: 'visible',
+                    paddingBottom: 20,
+                  }}
+                >
+                  <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
+                    {receiveView}
+                  </div>
+                  <Court
+                    forExport
+                    homePlayers={home.rotations[receiveView]}
+                    awayPlayers={away.rotations[receiveView]}
+                    homeColor={home.color}
+                    awayColor={away.color}
+                    setHomePlayers={() => {}}
+                    setAwayPlayers={() => {}}
+                    homeViolatingIds={[]}
+                    awayViolatingIds={[]}
+                    strokes={receiveStrokes}
+                    setStrokes={() => {}}
+                    currentTool="none"
+                    homeVisible={exportHomeVisible}
+                    awayVisible={exportAwayVisible}
+                    homePlayersVisible={true}
+                    awayPlayersVisible={true}
+                    homeLabel={home.name}
+                    awayLabel={away.name}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                    alignItems: 'center',
+                    overflow: 'visible',
+                    paddingBottom: 20,
+                  }}
+                >
+                  <div style={{ color: '#0b1c30', fontSize: 14, fontWeight: 600 }}>
+                    {serveView}
+                  </div>
+                  <Court
+                    forExport
+                    homePlayers={home.rotations[serveView]}
+                    awayPlayers={away.rotations[serveView]}
+                    homeColor={home.color}
+                    awayColor={away.color}
+                    setHomePlayers={() => {}}
+                    setAwayPlayers={() => {}}
+                    homeViolatingIds={[]}
+                    awayViolatingIds={[]}
+                    strokes={serveStrokes}
+                    setStrokes={() => {}}
+                    currentTool="none"
+                    homeVisible={exportHomeVisible}
+                    awayVisible={exportAwayVisible}
+                    homePlayersVisible={true}
+                    awayPlayersVisible={true}
+                    homeLabel={home.name}
+                    awayLabel={away.name}
+                  />
+                </div>
+              </div>
             </div>
           );
-        })}
-      </div>
+          })}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
