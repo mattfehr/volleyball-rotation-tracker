@@ -53,6 +53,7 @@ export default function Library() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<(RotationSet & { id: string }) | null>(null);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -191,7 +192,7 @@ export default function Library() {
             settings
           </button>
           <button
-            onClick={() => signOut(auth)}
+            onClick={() => setShowSignOutConfirm(true)}
             className="hidden md:flex items-center gap-1.5 text-on-primary/80 hover:text-on-primary px-4 py-2 text-sm font-semibold transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -383,6 +384,17 @@ export default function Library() {
           confirmVariant="danger"
           onConfirm={() => void handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {showSignOutConfirm && (
+        <ConfirmDialog
+          title="Sign Out"
+          message="Are you sure you want to sign out?"
+          confirmLabel="Sign Out"
+          cancelLabel="Cancel"
+          onConfirm={() => void signOut(auth)}
+          onCancel={() => setShowSignOutConfirm(false)}
         />
       )}
     </div>
