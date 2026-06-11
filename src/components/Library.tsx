@@ -7,6 +7,19 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import CourtThumbnail from './CourtThumbnail';
 import ConfirmDialog from './editor/ConfirmDialog';
+import LibraryFilterBar, {
+  DEFAULT_ADVANCED_FILTERS,
+  DEFAULT_FILTER_STATE,
+} from './library/LibraryFilterBar';
+import {
+  filterAndSortSets,
+  formatLibraryTimestamp,
+  getResultsHint,
+  hasActiveFilters,
+  type AdvancedFilters,
+  type DateRange,
+  type SortOption,
+} from '../lib/libraryFilters';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -30,6 +43,12 @@ export default function Library() {
   const { user } = useAuth();
   const [sets, setSets] = useState<(RotationSet & { id: string })[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>(DEFAULT_FILTER_STATE.sortBy);
+  const [dateRange, setDateRange] = useState<DateRange>(DEFAULT_FILTER_STATE.dateRange);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(DEFAULT_FILTER_STATE.selectedTeam);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(DEFAULT_ADVANCED_FILTERS);
+  const [openPanel, setOpenPanel] = useState<'date' | 'team' | 'advanced' | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -37,14 +56,30 @@ export default function Library() {
   const renameInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  const filterState = useMemo(
+    () => ({
+      searchQuery: debouncedSearch,
+      sortBy,
+      dateRange,
+      selectedTeam,
+      advancedFilters,
+    }),
+    [debouncedSearch, sortBy, dateRange, selectedTeam, advancedFilters]
+  );
+
   useEffect(() => {
     if (!user) return;
     getUserRotationSets(user.uid).then(setSets);
   }, [user]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 150);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, sortBy, dateRange, selectedTeam, advancedFilters]);
 
   useEffect(() => {
     if (editingId) {
@@ -52,6 +87,15 @@ export default function Library() {
       renameInputRef.current?.select();
     }
   }, [editingId]);
+
+  const handleClearAllFilters = () => {
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setSortBy(DEFAULT_FILTER_STATE.sortBy);
+    setDateRange(DEFAULT_FILTER_STATE.dateRange);
+    setSelectedTeam(DEFAULT_FILTER_STATE.selectedTeam);
+    setAdvancedFilters(DEFAULT_ADVANCED_FILTERS);
+  };
 
   const handleLoad = (set: RotationSet & { id: string }) => {
     localStorage.setItem('rotation-id', set.id);
@@ -107,11 +151,13 @@ export default function Library() {
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return sets;
-    const q = searchQuery.toLowerCase();
-    return sets.filter(s => (s.title || '').toLowerCase().includes(q));
-  }, [sets, searchQuery]);
+  const filtered = useMemo(
+    () => filterAndSortSets(sets, filterState),
+    [sets, filterState]
+  );
+
+  const resultsHint = getResultsHint(filtered.length, filterState);
+  const filtersActive = hasActiveFilters(filterState);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice(
@@ -120,6 +166,7 @@ export default function Library() {
   );
 
   const showPagination = totalPages > 1;
+  const showEmptyFiltered = filtered.length === 0 && sets.length > 0 && filtersActive;
 
   return (
     <div className="bg-surface-base text-on-surface font-sans min-h-screen flex flex-col">
@@ -176,35 +223,29 @@ export default function Library() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-outline-variant flex flex-col md:flex-row gap-4 mb-8">
-          <div className="flex-grow relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">
-              search
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search sessions, teams, or dates..."
-              className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-2 focus:ring-court-green focus:border-court-green outline-none transition-all text-sm"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors text-sm font-semibold">
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">calendar_today</span>
-              Date
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors text-sm font-semibold">
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">groups</span>
-              Team
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">expand_more</span>
-            </button>
-            <button className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors">
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">filter_list</span>
-            </button>
-          </div>
+        <div className="mb-2">
+          <LibraryFilterBar
+            sets={sets}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            selectedTeam={selectedTeam}
+            onSelectedTeamChange={setSelectedTeam}
+            advancedFilters={advancedFilters}
+            onAdvancedFiltersChange={setAdvancedFilters}
+            openPanel={openPanel}
+            onOpenPanelChange={setOpenPanel}
+            onClearAllFilters={handleClearAllFilters}
+          />
         </div>
+
+        {resultsHint && (
+          <p className="text-sm text-on-surface-variant mb-6">{resultsHint}</p>
+        )}
+        {!resultsHint && <div className="mb-8" />}
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -236,11 +277,21 @@ export default function Library() {
                     {set.title || 'Untitled'}
                   </h3>
                 )}
-                <div className="flex items-center gap-2 text-on-surface-variant mb-4">
-                  <span className="material-symbols-outlined text-[16px]">schedule</span>
-                  <span className="text-xs font-medium">
-                    {set.updatedAt.toDate().toLocaleString()}
-                  </span>
+                <div className="space-y-1 text-on-surface-variant mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">event</span>
+                    <span className="text-xs font-medium">
+                      <span className="text-on-surface-variant/70">Created </span>
+                      {formatLibraryTimestamp(set.createdAt.toDate())}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">update</span>
+                    <span className="text-xs font-medium">
+                      <span className="text-on-surface-variant/70">Updated </span>
+                      {formatLibraryTimestamp(set.updatedAt.toDate())}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t border-outline-variant">
                   <span />
@@ -268,13 +319,24 @@ export default function Library() {
             </div>
           ))}
 
-          <CreateNewCard onClick={handleNewRotation} />
+          {!showEmptyFiltered && <CreateNewCard onClick={handleNewRotation} />}
         </div>
 
-        {filtered.length === 0 && searchQuery && (
-          <p className="text-center text-on-surface-variant mt-6">
-            No rotations match "{searchQuery}".
-          </p>
+        {showEmptyFiltered && (
+          <div className="text-center text-on-surface-variant mt-6">
+            {debouncedSearch.trim() ? (
+              <p>No rotations match &ldquo;{debouncedSearch}&rdquo;.</p>
+            ) : (
+              <p>No rotations match your filters.</p>
+            )}
+            <button
+              type="button"
+              onClick={handleClearAllFilters}
+              className="mt-2 text-sm font-semibold text-athletic-orange hover:underline"
+            >
+              Clear all filters
+            </button>
+          </div>
         )}
 
         {showPagination && (
