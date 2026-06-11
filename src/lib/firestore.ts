@@ -149,3 +149,15 @@ export async function getRotationSetById(
 export async function deleteRotationSet(userId: string, rotationId: string) {
   await deleteDoc(doc(db, 'users', userId, 'rotations', rotationId));
 }
+
+export async function renameRotationSet(
+  userId: string,
+  rotationId: string,
+  title: string
+) {
+  await setDoc(
+    doc(db, 'users', userId, 'rotations', rotationId),
+    { title: title.trim() || 'Untitled', updatedAt: Timestamp.now() },
+    { merge: true }
+  );
+}
