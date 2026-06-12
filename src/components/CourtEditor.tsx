@@ -157,6 +157,7 @@ function checkLegalityForPlayers(players: Player[]): {
 
   const zp = (z: number) => zoneMap.get(z)!;
   const nm = (z: number) => zp(z).name || 'Unnamed';
+  const pos = (z: number) => zp(z).label || 'Unlabeled';
 
   const violations: string[] = [];
   const violators = new Set<string>();
@@ -167,13 +168,13 @@ function checkLegalityForPlayers(players: Player[]): {
     violators.add(zp(b).id);
   };
 
-  if (zp(1).y < zp(2).y) flag(1, 2, `${nm(1)} must be behind ${nm(2)}`);
-  if (zp(6).y < zp(3).y) flag(6, 3, `${nm(6)} must be behind ${nm(3)}`);
-  if (zp(5).y < zp(4).y) flag(5, 4, `${nm(5)} must be behind ${nm(4)}`);
-  if (zp(2).x < zp(3).x) flag(2, 3, `${nm(2)} must be right of ${nm(3)}`);
-  if (zp(3).x < zp(4).x) flag(3, 4, `${nm(3)} must be right of ${nm(4)}`);
-  if (zp(1).x < zp(6).x) flag(1, 6, `${nm(1)} must be right of ${nm(6)}`);
-  if (zp(6).x < zp(5).x) flag(6, 5, `${nm(6)} must be right of ${nm(5)}`);
+  if (zp(1).y < zp(2).y) flag(1, 2, `${nm(1)} (${pos(1)}) must be behind ${nm(2)} (${pos(2)})`);
+  if (zp(6).y < zp(3).y) flag(6, 3, `${nm(6)} (${pos(6)}) must be behind ${nm(3)} (${pos(3)})`);
+  if (zp(5).y < zp(4).y) flag(5, 4, `${nm(5)} (${pos(5)}) must be behind ${nm(4)} (${pos(4)})`);
+  if (zp(2).x < zp(3).x) flag(2, 3, `${nm(2)} (${pos(2)}) must be right of ${nm(3)} (${pos(3)})`);
+  if (zp(3).x < zp(4).x) flag(3, 4, `${nm(3)} (${pos(3)}) must be right of ${nm(4)} (${pos(4)})`);
+  if (zp(1).x < zp(6).x) flag(1, 6, `${nm(1)} (${pos(1)}) must be right of ${nm(6)} (${pos(6)})`);
+  if (zp(6).x < zp(5).x) flag(6, 5, `${nm(6)} (${pos(6)}) must be right of ${nm(5)} (${pos(5)})`);
 
   return {
     result:
