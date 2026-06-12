@@ -381,12 +381,20 @@ function CourtEditor() {
     });
   };
 
-  const updatePlayer = (which: 'home' | 'away', updated: Player) => {
+  const updatePlayer = (
+    which: 'home' | 'away',
+    updated: Player,
+    currentView: RotationViewKey
+  ) => {
+    const { label, zone, x, y, ...identity } = updated;
     updateTeam(which, (prev) => ({
       ...prev,
       roster: prev.roster.map((p) => (p.id === updated.id ? updated : p)),
       rotations: createRotationViewRecord<Player[]>((vk) =>
-        prev.rotations[vk].map((p) => (p.id === updated.id ? updated : p))
+        prev.rotations[vk].map((p) => {
+          if (p.id !== updated.id) return p;
+          return vk === currentView ? updated : { ...p, ...identity };
+        })
       ),
     }));
   };
@@ -700,7 +708,8 @@ function CourtEditor() {
   const handleSaveEdit = (updated: Player) => {
     if (!editTarget) return;
     const { x, y } = applyZonePosition(updated, editTarget.team);
-    updatePlayer(editTarget.team, { ...updated, x, y });
+    const currentView = editTarget.team === 'home' ? homeView : awayView;
+    updatePlayer(editTarget.team, { ...updated, x, y }, currentView);
     setEditTarget(null);
   };
 
